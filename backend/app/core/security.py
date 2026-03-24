@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import APIKeyHeader
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -15,7 +15,9 @@ from app.models.user import User
 settings = get_settings()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+
+# Use APIKeyHeader instead of OAuth2PasswordBearer for better Swagger UX
+api_key_header = APIKeyHeader(name="Authorization", description="Enter: Bearer <your_jwt_token>")
 
 
 def hash_password(password: str) -> str:
@@ -36,7 +38,7 @@ def create_access_token(data: dict) -> tuple[str, datetime]:
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    authorization: str = Depends(api_key_header),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     credentials_exception = HTTPException(
@@ -44,6 +46,16 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
+    # Extract token from "Bearer <token>" format
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format. Use: Bearer <token>",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    token = authorization.replace("Bearer ", "")
     
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
@@ -63,8 +75,18 @@ async def get_current_user(
     return user
 
 
-def get_current_user_email(token: str = Depends(oauth2_scheme)) -> str:
+def get_current_user_email(authorization: str = Depends(api_key_header)) -> str:
     """Lightweight version that only returns email without DB lookup"""
+    
+    # Extract token from "Bearer <token>" format
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format. Use: Bearer <token>"
+        )
+    
+    token = authorization.replace("Bearer ", "")
+    
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
         email: str = payload.get("sub")
