@@ -3,12 +3,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional
+from datetime import timezone
 
 from app.db.session import get_db
 from app.models.monitor import Monitor
 from app.models.user import User
-from app.schemas.monitor import MonitorCreate, MonitorResponse, MonitorUpdate, MonitorList
+from app.schemas.monitor import (
+    MonitorCreate, 
+    MonitorResponse, 
+    MonitorDetailResponse,
+    MonitorUpdate, 
+    MonitorList
+)
 from app.core.security import get_current_user
+from app.services.monitor_service import MonitorService
 
 router = APIRouter(prefix="/monitors", tags=["monitors"])
 
@@ -99,21 +107,31 @@ async def list_monitors(
     )
     total = len(count_result.scalars().all())
     
-    # Convert to response format
-    monitor_responses = [
-        MonitorResponse(
-            id=monitor.id,
-            user_id=monitor.user_id,
-            url=monitor.url,
-            friendly_name=monitor.name,
-            interval_seconds=monitor.interval,
-            status=monitor.last_status,
-            is_active=monitor.is_active,
-            last_checked=None,  # TODO: Add last_checked from heartbeats
-            created_at=monitor.created_at
+    # Convert to response format with last_checked from heartbeats
+    monitor_responses = []
+    for monitor in monitors:
+        # Get latest heartbeat for last_checked
+        latest_heartbeat = await MonitorService.get_latest_heartbeat(db, monitor.id)
+        last_checked = None
+        if latest_heartbeat:
+            last_checked = latest_heartbeat.created_at
+            # Ensure timezone consistency
+            if last_checked.tzinfo is None:
+                last_checked = last_checked.replace(tzinfo=timezone.utc)
+        
+        monitor_responses.append(
+            MonitorResponse(
+                id=monitor.id,
+                user_id=monitor.user_id,
+                url=monitor.url,
+                friendly_name=monitor.name,
+                interval_seconds=monitor.interval,
+                status=monitor.last_status,
+                is_active=monitor.is_active,
+                last_checked=last_checked,
+                created_at=monitor.created_at
+            )
         )
-        for monitor in monitors
-    ]
     
     return MonitorList(
         monitors=monitor_responses,
@@ -123,28 +141,48 @@ async def list_monitors(
     )
 
 
-@router.get("/{monitor_id}", response_model=MonitorResponse)
+@router.get("/{monitor_id}", response_model=MonitorDetailResponse)
 async def get_monitor(
     monitor_id: str,
+    include_heartbeats: int = Query(50, ge=0, le=200, description="Number of recent heartbeats to include"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get a specific monitor by ID"""
+    """Get a specific monitor by ID with heartbeat history and statistics"""
     
-    result = await db.execute(
-        select(Monitor).where(
-            and_(
-                Monitor.id == monitor_id,
-                Monitor.user_id == current_user.id
-            )
-        )
+    try:
+        # Convert string to UUID
+        from uuid import UUID
+        monitor_uuid = UUID(monitor_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid monitor ID format")
+    
+    # Get monitor with heartbeats and stats
+    result = await MonitorService.get_monitor_with_heartbeats(
+        db=db,
+        monitor_id=monitor_uuid,
+        user_id=current_user.id,
+        limit=include_heartbeats
     )
-    monitor = result.scalar_one_or_none()
     
-    if not monitor:
+    if not result:
         raise HTTPException(status_code=404, detail="Monitor not found")
     
-    return MonitorResponse(
+    monitor, heartbeats, stats = result
+    
+    # Get latest heartbeat for last_checked
+    latest_heartbeat = await MonitorService.get_latest_heartbeat(db, monitor_uuid)
+    last_checked = None
+    if latest_heartbeat:
+        last_checked = latest_heartbeat.created_at
+        # Ensure timezone consistency
+        if last_checked.tzinfo is None:
+            last_checked = last_checked.replace(tzinfo=timezone.utc)
+    
+    # Convert heartbeats to response format
+    heartbeat_responses = MonitorService.heartbeats_to_response(heartbeats)
+    
+    return MonitorDetailResponse(
         id=monitor.id,
         user_id=monitor.user_id,
         url=monitor.url,
@@ -152,8 +190,12 @@ async def get_monitor(
         interval_seconds=monitor.interval,
         status=monitor.last_status,
         is_active=monitor.is_active,
-        last_checked=None,  # TODO: Add last_checked from heartbeats
-        created_at=monitor.created_at
+        last_checked=last_checked,
+        created_at=monitor.created_at,
+        recent_heartbeats=heartbeat_responses,
+        uptime_percentage=stats.uptime_percentage,
+        average_latency=stats.average_latency,
+        total_checks=stats.total_checks
     )
 
 
@@ -239,3 +281,134 @@ async def delete_monitor(
     except SQLAlchemyError:
         await db.rollback()
         raise HTTPException(status_code=500, detail="Database error occurred")
+
+@router.get("/{monitor_id}/stats")
+async def get_monitor_stats(
+    monitor_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get detailed statistics for a specific monitor"""
+    
+    try:
+        from uuid import UUID
+        monitor_uuid = UUID(monitor_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid monitor ID format")
+    
+    # Verify monitor exists and belongs to user
+    result = await db.execute(
+        select(Monitor).where(
+            and_(
+                Monitor.id == monitor_uuid,
+                Monitor.user_id == current_user.id
+            )
+        )
+    )
+    monitor = result.scalar_one_or_none()
+    
+    if not monitor:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+    
+    # Calculate and return statistics
+    stats = await MonitorService.calculate_monitor_stats(db, monitor_uuid)
+    return stats
+
+
+@router.get("/{monitor_id}/heartbeats")
+async def get_monitor_heartbeats(
+    monitor_id: str,
+    limit: int = Query(100, ge=1, le=1000, description="Number of heartbeats to return"),
+    offset: int = Query(0, ge=0, description="Number of heartbeats to skip"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get heartbeat history for a specific monitor"""
+    
+    try:
+        from uuid import UUID
+        monitor_uuid = UUID(monitor_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid monitor ID format")
+    
+    # Verify monitor exists and belongs to user
+    result = await db.execute(
+        select(Monitor).where(
+            and_(
+                Monitor.id == monitor_uuid,
+                Monitor.user_id == current_user.id
+            )
+        )
+    )
+    monitor = result.scalar_one_or_none()
+    
+    if not monitor:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+    
+    # Get heartbeats with pagination
+    from sqlalchemy import desc
+    from app.models.heartbeat import Heartbeat
+    
+    heartbeats_result = await db.execute(
+        select(Heartbeat)
+        .where(Heartbeat.monitor_id == monitor_uuid)
+        .order_by(desc(Heartbeat.created_at))
+        .offset(offset)
+        .limit(limit)
+    )
+    heartbeats = list(heartbeats_result.scalars().all())
+    
+    # Get total count
+    count_result = await db.execute(
+        select(Heartbeat).where(Heartbeat.monitor_id == monitor_uuid)
+    )
+    total = len(count_result.scalars().all())
+    
+    # Convert to response format
+    heartbeat_responses = MonitorService.heartbeats_to_response(heartbeats)
+    
+    return {
+        "heartbeats": heartbeat_responses,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
+
+@router.get("/{monitor_id}/timing-stats")
+async def get_monitor_timing_stats(
+    monitor_id: str,
+    hours: int = Query(24, ge=1, le=168, description="Hours to look back (max 1 week)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get detailed timing statistics for a specific monitor"""
+    
+    try:
+        from uuid import UUID
+        monitor_uuid = UUID(monitor_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid monitor ID format")
+    
+    # Verify monitor exists and belongs to user
+    result = await db.execute(
+        select(Monitor).where(
+            and_(
+                Monitor.id == monitor_uuid,
+                Monitor.user_id == current_user.id
+            )
+        )
+    )
+    monitor = result.scalar_one_or_none()
+    
+    if not monitor:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+    
+    # Get detailed timing statistics
+    timing_stats = await MonitorService.get_detailed_timing_stats(db, monitor_uuid, hours)
+    
+    return {
+        "monitor_id": str(monitor_uuid),
+        "monitor_name": monitor.name,
+        "url": monitor.url,
+        "timing_statistics": timing_stats
+    }

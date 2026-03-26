@@ -1,9 +1,28 @@
 from pydantic import BaseModel, HttpUrl, Field, field_validator
 from uuid import UUID
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 import ipaddress
 from urllib.parse import urlparse
+
+
+class HeartbeatResponse(BaseModel):
+    """Individual heartbeat record with detailed timing metrics"""
+    id: int
+    status_code: int
+    latency_ms: float
+    
+    # Detailed timing metrics
+    tcp_connect_ms: Optional[float] = None
+    tls_handshake_ms: Optional[float] = None
+    ttfb_ms: Optional[float] = None
+    timing_details: Optional[dict] = None
+    
+    error_message: Optional[str] = None
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 
 class MonitorCreate(BaseModel):
@@ -62,6 +81,7 @@ class MonitorCreate(BaseModel):
 
 
 class MonitorResponse(BaseModel):
+    """Basic monitor information without heartbeats"""
     id: UUID
     user_id: UUID
     url: str
@@ -76,6 +96,28 @@ class MonitorResponse(BaseModel):
         from_attributes = True
 
 
+class MonitorDetailResponse(MonitorResponse):
+    """Detailed monitor information with heartbeat history"""
+    recent_heartbeats: List[HeartbeatResponse] = []
+    uptime_percentage: Optional[float] = None
+    average_latency: Optional[float] = None
+    total_checks: int = 0
+    
+    class Config:
+        from_attributes = True
+
+
+class MonitorStats(BaseModel):
+    """Monitor statistics"""
+    uptime_percentage: float
+    average_latency: float
+    total_checks: int
+    successful_checks: int
+    failed_checks: int
+    last_24h_checks: int
+    last_24h_uptime: float
+
+
 class MonitorUpdate(BaseModel):
     friendly_name: Optional[str] = Field(None, min_length=1, max_length=50)
     interval_seconds: Optional[int] = Field(None, ge=30, le=3600)
@@ -83,7 +125,7 @@ class MonitorUpdate(BaseModel):
 
 
 class MonitorList(BaseModel):
-    monitors: list[MonitorResponse]
+    monitors: List[MonitorResponse]
     total: int
     page: int
     per_page: int

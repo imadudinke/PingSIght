@@ -1,8 +1,19 @@
-from .monitor import MonitorCreate, MonitorResponse, MonitorUpdate, MonitorList
+from .monitor import (
+    MonitorCreate, 
+    MonitorResponse, 
+    MonitorDetailResponse,
+    MonitorUpdate, 
+    MonitorList,
+    MonitorStats,
+    HeartbeatResponse
+)
 
 __all__ = [
     "MonitorCreate",
-    "MonitorResponse", 
+    "MonitorResponse",
+    "MonitorDetailResponse", 
     "MonitorUpdate",
-    "MonitorList"
+    "MonitorList",
+    "MonitorStats",
+    "HeartbeatResponse"
 ]

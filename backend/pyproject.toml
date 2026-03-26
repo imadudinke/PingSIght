@@ -19,6 +19,7 @@ dependencies = [
   "dotenv>=0.9.9",
   "fastapi-sso>=0.21.0",
   "python-dotenv>=1.2.2",
+  "apscheduler>=3.10.4",
 ]
 
 [tool.uv]
