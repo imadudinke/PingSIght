@@ -132,7 +132,10 @@ async def list_monitors(
                 status=monitor.last_status,
                 is_active=monitor.is_active,
                 last_checked=last_checked,
-                created_at=monitor.created_at
+                created_at=monitor.created_at,
+                ssl_status=monitor.ssl_status,
+                ssl_expiry_date=monitor.ssl_expiry_date,
+                ssl_days_remaining=monitor.ssl_days_remaining
             )
         )
     
@@ -195,6 +198,9 @@ async def get_monitor(
         is_active=monitor.is_active,
         last_checked=last_checked,
         created_at=monitor.created_at,
+        ssl_status=monitor.ssl_status,
+        ssl_expiry_date=monitor.ssl_expiry_date,
+        ssl_days_remaining=monitor.ssl_days_remaining,
         recent_heartbeats=heartbeat_responses,
         uptime_percentage=stats.uptime_percentage,
         average_latency=stats.average_latency,

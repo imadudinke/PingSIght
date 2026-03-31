@@ -15,6 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 # Import your models (Ensure these paths are correct for your project)
 from app.models.monitor import Monitor
 from app.models.heartbeat import Heartbeat
+from app.worker.ssl_checker import get_ssl_info
 
 logger = logging.getLogger(__name__)
 
@@ -133,12 +134,34 @@ async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:
     
     timings = result["timings"]
     
+    # Check SSL certificate (for HTTPS URLs) - run in thread pool to avoid blocking
+    ssl_info = None
     try:
-        # Update Monitor Last Status
+        import asyncio
+        ssl_info = await asyncio.to_thread(get_ssl_info, url)
+        if ssl_info:
+            logger.info(f"SSL check successful for {url}: {ssl_info['status']}, {ssl_info['days_remaining']} days")
+        else:
+            logger.debug(f"No SSL info for {url} (likely not HTTPS)")
+    except Exception as e:
+        logger.error(f"SSL check failed for {url}: {str(e)}", exc_info=True)
+        ssl_info = None
+    
+    try:
+        # Update Monitor with status and SSL info
+        update_values = {"last_status": result["status"]}
+        
+        if ssl_info:
+            update_values.update({
+                "ssl_status": ssl_info["status"],
+                "ssl_expiry_date": ssl_info["expiry_date"],
+                "ssl_days_remaining": ssl_info["days_remaining"]
+            })
+        
         await db.execute(
             update(Monitor)
             .where(Monitor.id == monitor_id)
-            .values(last_status=result["status"])
+            .values(**update_values)
         )
         
         # Create Heartbeat Record
@@ -157,9 +180,17 @@ async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:
         db.add(new_heartbeat)
         await db.commit()
         
+        # Add SSL info to result
+        if ssl_info:
+            result["ssl"] = {
+                "status": ssl_info["status"],
+                "days_remaining": ssl_info["days_remaining"],
+                "expiry_date": ssl_info["expiry_date"].isoformat()
+            }
+        
     except Exception as e:
         await db.rollback()
-        logger.error(f"DB Error: {str(e)}")
+        logger.error(f"DB Error in perform_check: {str(e)}", exc_info=True)
     
     return result
 

@@ -92,6 +92,11 @@ class MonitorResponse(BaseModel):
     last_checked: Optional[datetime] = None
     created_at: datetime
     
+    # SSL Certificate fields
+    ssl_status: Optional[str] = None
+    ssl_expiry_date: Optional[datetime] = None
+    ssl_days_remaining: Optional[int] = None
+    
     class Config:
         from_attributes = True
 

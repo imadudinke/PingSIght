@@ -6,6 +6,7 @@ from app.core.security import get_current_user
 from app.models.user import User
 from app.worker.scheduler import monitor_scheduler
 from app.worker.engine import perform_deep_check
+from app.worker.ssl_checker import get_ssl_info
 
 router = APIRouter(prefix="/status", tags=["status"])
 
@@ -26,6 +27,32 @@ async def test_deep_check(url: str) -> Dict[str, Any]:
     """
     result = await perform_deep_check(url)
     return result
+
+
+@router.get("/test-ssl")
+async def test_ssl_check(url: str) -> Dict[str, Any]:
+    """
+    Test endpoint to check SSL certificate information.
+    Returns certificate expiry, days remaining, and status.
+    
+    Example: /status/test-ssl?url=https://google.com
+    """
+    ssl_info = get_ssl_info(url)
+    
+    if not ssl_info:
+        return {
+            "error": "Unable to retrieve SSL information. URL must be HTTPS.",
+            "url": url
+        }
+    
+    return {
+        "url": url,
+        "ssl_status": ssl_info["status"],
+        "days_remaining": ssl_info["days_remaining"],
+        "expiry_date": ssl_info["expiry_date"].isoformat(),
+        "issuer": ssl_info.get("issuer"),
+        "subject": ssl_info.get("subject")
+    }
 
 
 @router.post("/scheduler/refresh")

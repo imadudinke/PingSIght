@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from uuid import uuid4
+from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -19,6 +20,12 @@ class Monitor(Base):
     interval_seconds: Mapped[int] = mapped_column("interval", Integer)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_status: Mapped[str] = mapped_column(String(32), default="PENDING")
+    
+    # SSL Certificate fields
+    ssl_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    ssl_expiry_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ssl_days_remaining: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
     user: Mapped["User"] = relationship("User", back_populates="monitors")
