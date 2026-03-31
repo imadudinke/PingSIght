@@ -6,6 +6,7 @@ from datetime import datetime
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Uuid
+from sqlalchemy.dialects.postgresql import JSONB
 
 from app.db.base import Base
 
@@ -20,6 +21,13 @@ class Monitor(Base):
     interval_seconds: Mapped[int] = mapped_column("interval", Integer)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_status: Mapped[str] = mapped_column(String(32), default="PENDING")
+    
+    # Monitor type: 'simple' or 'scenario'
+    monitor_type: Mapped[str] = mapped_column(String(20), default="simple")
+    
+    # Scenario steps (for scenario-based monitors)
+    # Format: [{"name": "Step 1", "url": "https://...", "order": 1}, ...]
+    steps: Mapped[dict | None] = mapped_column(JSONB, nullable=True, default=list)
     
     # SSL Certificate fields
     ssl_status: Mapped[str | None] = mapped_column(String(32), nullable=True)

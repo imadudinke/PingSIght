@@ -28,24 +28,52 @@ async def create_monitor(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Create a new monitor with SSRF protection and duplicate prevention"""
+    """Create a new monitor (simple or scenario-based) with SSRF protection"""
     
     try:
-        # Check for duplicate URL for this user
-        existing_monitor = await db.execute(
-            select(Monitor).where(
-                and_(
-                    Monitor.user_id == current_user.id,
-                    Monitor.url == str(monitor_in.url)
+        # For scenario monitors, check duplicate by name
+        if monitor_in.monitor_type == "scenario":
+            existing_monitor = await db.execute(
+                select(Monitor).where(
+                    and_(
+                        Monitor.user_id == current_user.id,
+                        Monitor.name == monitor_in.friendly_name,
+                        Monitor.monitor_type == "scenario"
+                    )
                 )
             )
-        )
-        
-        if existing_monitor.scalar_one_or_none():
-            raise HTTPException(
-                status_code=400,
-                detail=f"You already have a monitor for this URL: {monitor_in.url}"
+            if existing_monitor.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"You already have a scenario monitor with this name: {monitor_in.friendly_name}"
+                )
+        else:
+            # For simple monitors, check duplicate URL
+            existing_monitor = await db.execute(
+                select(Monitor).where(
+                    and_(
+                        Monitor.user_id == current_user.id,
+                        Monitor.url == str(monitor_in.url)
+                    )
+                )
             )
+            if existing_monitor.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"You already have a monitor for this URL: {monitor_in.url}"
+                )
+        
+        # Prepare steps data for scenario monitors
+        steps_data = None
+        if monitor_in.monitor_type == "scenario" and monitor_in.steps:
+            steps_data = [
+                {
+                    "name": step.name,
+                    "url": str(step.url),
+                    "order": step.order
+                }
+                for step in monitor_in.steps
+            ]
         
         # Create the database object
         new_monitor = Monitor(
@@ -54,14 +82,20 @@ async def create_monitor(
             interval_seconds=monitor_in.interval_seconds,
             user_id=current_user.id,
             last_status="PENDING",
-            is_active=True
+            is_active=True,
+            monitor_type=monitor_in.monitor_type,
+            steps=steps_data
         )
         
         # Save to database
         db.add(new_monitor)
         await db.commit()
         await db.refresh(new_monitor)
+        
+        # Schedule the monitor
         await monitor_scheduler.schedule_monitor(new_monitor)
+        
+        # Execute initial check
         await monitor_scheduler.execute_monitor_check(new_monitor.id, new_monitor.url)
         
         # Return response with proper field mapping
@@ -73,8 +107,10 @@ async def create_monitor(
             interval_seconds=new_monitor.interval_seconds,
             status=new_monitor.last_status,
             is_active=new_monitor.is_active,
-            last_checked=None,  # New monitors haven't been checked yet
-            created_at=new_monitor.created_at
+            last_checked=None,
+            created_at=new_monitor.created_at,
+            monitor_type=new_monitor.monitor_type,
+            steps=new_monitor.steps
         )
         
     except SQLAlchemyError as e:
@@ -135,7 +171,9 @@ async def list_monitors(
                 created_at=monitor.created_at,
                 ssl_status=monitor.ssl_status,
                 ssl_expiry_date=monitor.ssl_expiry_date,
-                ssl_days_remaining=monitor.ssl_days_remaining
+                ssl_days_remaining=monitor.ssl_days_remaining,
+                monitor_type=monitor.monitor_type,
+                steps=monitor.steps
             )
         )
     
@@ -201,6 +239,8 @@ async def get_monitor(
         ssl_status=monitor.ssl_status,
         ssl_expiry_date=monitor.ssl_expiry_date,
         ssl_days_remaining=monitor.ssl_days_remaining,
+        monitor_type=monitor.monitor_type,
+        steps=monitor.steps,
         recent_heartbeats=heartbeat_responses,
         uptime_percentage=stats.uptime_percentage,
         average_latency=stats.average_latency,

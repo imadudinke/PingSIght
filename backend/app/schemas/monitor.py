@@ -1,9 +1,16 @@
 from pydantic import BaseModel, HttpUrl, Field, field_validator
 from uuid import UUID
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Literal
 import ipaddress
 from urllib.parse import urlparse
+
+
+class ScenarioStep(BaseModel):
+    """A single step in a scenario monitor"""
+    name: str = Field(..., min_length=1, max_length=100, description="Step name")
+    url: HttpUrl = Field(..., description="URL to check in this step")
+    order: int = Field(..., ge=1, le=3, description="Step order (1-3)")
 
 
 class HeartbeatResponse(BaseModel):
@@ -29,6 +36,34 @@ class MonitorCreate(BaseModel):
     url: HttpUrl
     friendly_name: str = Field(..., min_length=1, max_length=50)
     interval_seconds: int = Field(default=60, ge=30, le=3600)  # Min 30s, Max 1hr
+    monitor_type: Literal["simple", "scenario"] = Field(default="simple", description="Monitor type")
+    steps: Optional[List[ScenarioStep]] = Field(default=None, description="Scenario steps (max 3, only for scenario type)")
+    
+    @field_validator('steps')
+    @classmethod
+    def validate_steps(cls, v, info):
+        """Validate scenario steps"""
+        monitor_type = info.data.get('monitor_type')
+        
+        if monitor_type == 'scenario':
+            if not v or len(v) == 0:
+                raise ValueError("Scenario monitors must have at least 1 step")
+            if len(v) > 3:
+                raise ValueError("Scenario monitors can have maximum 3 steps")
+            
+            # Validate order uniqueness
+            orders = [step.order for step in v]
+            if len(orders) != len(set(orders)):
+                raise ValueError("Step orders must be unique")
+            
+            # Validate order sequence
+            if sorted(orders) != list(range(1, len(v) + 1)):
+                raise ValueError("Step orders must be sequential starting from 1")
+        
+        elif monitor_type == 'simple' and v:
+            raise ValueError("Simple monitors cannot have steps")
+        
+        return v
     
     @field_validator('url')
     @classmethod
@@ -91,6 +126,10 @@ class MonitorResponse(BaseModel):
     is_active: bool
     last_checked: Optional[datetime] = None
     created_at: datetime
+    
+    # Monitor type and steps
+    monitor_type: str = "simple"
+    steps: Optional[List[dict]] = None
     
     # SSL Certificate fields
     ssl_status: Optional[str] = None
