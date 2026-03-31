@@ -164,6 +164,7 @@ class MonitorService:
                 tls_handshake_ms=getattr(hb, 'tls_handshake_ms', None),
                 ttfb_ms=getattr(hb, 'ttfb_ms', None),
                 timing_details=getattr(hb, 'timing_details', None),
+                step_results=getattr(hb, 'step_results', None),
                 error_message=hb.error_message,
                 created_at=hb.created_at.replace(tzinfo=timezone.utc) if hb.created_at.tzinfo is None else hb.created_at
             )

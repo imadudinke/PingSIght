@@ -19,11 +19,15 @@ class HeartbeatResponse(BaseModel):
     status_code: int
     latency_ms: float
     
-    # Detailed timing metrics
+    # Detailed timing metrics (for simple monitors)
     tcp_connect_ms: Optional[float] = None
     tls_handshake_ms: Optional[float] = None
     ttfb_ms: Optional[float] = None
     timing_details: Optional[dict] = None
+    
+    # Scenario step results (for scenario monitors)
+    # Each step includes: name, url, status, status_code, latency_ms, dns_ms, tcp_ms, tls_ms, ttfb_ms, error
+    step_results: Optional[List[dict]] = None
     
     error_message: Optional[str] = None
     created_at: datetime
