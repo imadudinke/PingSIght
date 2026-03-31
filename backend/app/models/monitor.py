@@ -16,7 +16,7 @@ class Monitor(Base):
     user_id: Mapped[Uuid] = mapped_column(ForeignKey("users.id"), index=True)
     url: Mapped[str] = mapped_column(String(2048))
     name: Mapped[str] = mapped_column(String(255))
-    interval: Mapped[int] = mapped_column(Integer)
+    interval_seconds: Mapped[int] = mapped_column("interval", Integer)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_status: Mapped[str] = mapped_column(String(32), default="PENDING")
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
@@ -25,3 +25,11 @@ class Monitor(Base):
     heartbeats: Mapped[list["Heartbeat"]] = relationship(
         "Heartbeat", back_populates="monitor"
     )
+
+    @property
+    def interval(self) -> int:
+        return self.interval_seconds
+
+    @interval.setter
+    def interval(self, value: int) -> None:
+        self.interval_seconds = value

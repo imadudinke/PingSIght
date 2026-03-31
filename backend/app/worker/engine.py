@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from uuid import UUID
 from dataclasses import dataclass
+import anyio
+from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,79 +37,94 @@ class DetailedTimings:
         }
 
 async def perform_deep_check(url: str) -> Dict[str, Any]:
+    """Measures DNS resolution and TCP connection time"""
     timings = DetailedTimings()
     marks = {}
     
-    # Trace hooks must be synchronous functions for the transport extension
-    def trace_handler(event_name: str, info: dict):
+    parsed_url = urlparse(url)
+    hostname = parsed_url.hostname or url.split('/')[0]  # Fallback if no https://
+    
+    if not hostname:
+        return {
+            "status": "DOWN",
+            "status_code": 0,
+            "timings": timings,
+            "metrics": timings.to_dict(),
+            "error": "Invalid URL"
+        }
+
+    # --- PHASE 1: DNS Resolution ---
+    dns_start = time.perf_counter()
+    try:
+        await anyio.getaddrinfo(hostname, None)
+        timings.dns_ms = round((time.perf_counter() - dns_start) * 1000, 2)
+        logger.info(f"DNS Resolution for {hostname}: {timings.dns_ms}ms")
+    except Exception as e:
+        # If DNS fails, record how long we waited before it failed
+        timings.dns_ms = round((time.perf_counter() - dns_start) * 1000, 2)
+        return {
+            "status": "DOWN",
+            "status_code": 0,
+            "timings": timings,
+            "metrics": timings.to_dict(),
+            "error": f"DNS Resolution Failed: {str(e)}"
+        }
+
+    # --- PHASE 2: TCP, TLS, and TTFB ---
+    async def trace_handler(event_name: str, info: dict):
         now = time.perf_counter()
         
-        # 1. TCP Connection (Usually includes DNS lookup)
+        # TCP (The physical connection)
         if event_name == "connection.connect_tcp.started":
             marks["tcp_start"] = now
         elif event_name == "connection.connect_tcp.complete":
             timings.tcp_ms = round((now - marks.get("tcp_start", now)) * 1000, 2)
         
-        # 2. TLS Handshake
+        # TLS (The Security/SSL connection)
         elif event_name == "connection.start_tls.started":
             marks["tls_start"] = now
         elif event_name == "connection.start_tls.complete":
             timings.tls_ms = round((now - marks.get("tls_start", now)) * 1000, 2)
         
-        # 3. TTFB (Time to First Byte)
-        # Note: We check both http11 and http2 event names
+        # TTFB (Time To First Byte - Server response time)
         elif event_name in ["http11.send_request_headers.started", "http2.send_request_headers.started"]:
             marks["req_sent"] = now
         elif event_name in ["http11.receive_response_headers.started", "http2.receive_response_headers.started"]:
             sent_at = marks.get("req_sent", now)
             timings.ttfb_ms = round((now - sent_at) * 1000, 2)
 
-    # CORRECT WAY: Define transport with extensions
-    transport = httpx.AsyncHTTPTransport(
-        extensions={'trace': trace_handler},
-        retries=0
-    )
-
-    headers = {
-        "User-Agent": "pingSight-Monitor/2.0",
-        "Accept": "*/*",
-        "Connection": "close"
-    }
+    # Use the Transport to allow Tracing
+    transport = httpx.AsyncHTTPTransport(retries=0)
     
-    start_global = time.perf_counter()
-    
+    start_request = time.perf_counter()
     try:
-        # Pass the transport to the client, NOT event_hooks
-        async with httpx.AsyncClient(
-            transport=transport,
-            timeout=httpx.Timeout(10.0),
-            headers=headers,
-            follow_redirects=True
-        ) as client:
+        async with httpx.AsyncClient(transport=transport, timeout=10.0) as client:
+            # This actually calls the website
+            response = await client.get(url, extensions={"trace": trace_handler})
             
-            response = await client.get(url)
-            timings.total_ms = round((time.perf_counter() - start_global) * 1000, 2)
-            
+            # Measure how long the WHOLE trip took
+            timings.total_ms = round((time.perf_counter() - start_request) * 1000, 2)
+
+            # Logic: Is it actually "UP"?
+            # 200-299 = UP, 300-399 = Redirect, 400+ = ISSUE
             status = "UP" if response.is_success else "ISSUE"
-            if response.status_code >= 500:
-                status = "DOWN"
             
             return {
                 "status": status,
                 "status_code": response.status_code,
                 "timings": timings,
-                "metrics": timings.to_dict(),
+                "metrics": timings.to_dict(),  # dns_ms and tcp_ms will be here
                 "error": None
             }
-            
+
     except Exception as e:
-        timings.total_ms = round((time.perf_counter() - start_global) * 1000, 2)
+        timings.total_ms = round((time.perf_counter() - start_request) * 1000, 2)
         return {
             "status": "DOWN",
             "status_code": 0,
             "timings": timings,
             "metrics": timings.to_dict(),
-            "error": str(e)
+            "error": f"Connection Failed: {str(e)}"
         }
 
 async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:

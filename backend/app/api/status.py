@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends
 from datetime import datetime
+from typing import Any, Dict
 
 from app.core.security import get_current_user
 from app.models.user import User
 from app.worker.scheduler import monitor_scheduler
+from app.worker.engine import perform_deep_check
 
 router = APIRouter(prefix="/status", tags=["status"])
 
@@ -12,6 +14,18 @@ router = APIRouter(prefix="/status", tags=["status"])
 async def get_scheduler_status(current_user: User = Depends(get_current_user)):
     """Get detailed scheduler status (requires authentication)."""
     return monitor_scheduler.get_job_status()
+
+
+@router.get("/test-deep")
+async def test_deep_check(url: str) -> Dict[str, Any]:
+    """
+    Test endpoint to perform a deep check on any URL.
+    Returns detailed timing metrics including DNS, TCP, TLS, and TTFB.
+    
+    Example: /status/test-deep?url=https://google.com
+    """
+    result = await perform_deep_check(url)
+    return result
 
 
 @router.post("/scheduler/refresh")

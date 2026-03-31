@@ -125,7 +125,7 @@ class MonitorScheduler:
             if existing_job:
                 # Check if interval changed
                 current_interval = existing_job.trigger.interval.total_seconds()
-                if current_interval != monitor.interval:
+                if current_interval != monitor.interval_seconds:
                     # Interval changed, reschedule
                     self.scheduler.remove_job(job_id)
                     logger.info(f"Rescheduling monitor {monitor.id} due to interval change")
@@ -136,14 +136,14 @@ class MonitorScheduler:
             # Add new job
             self.scheduler.add_job(
                 func=self.execute_monitor_check,
-                trigger=IntervalTrigger(seconds=monitor.interval),
+                trigger=IntervalTrigger(seconds=monitor.interval_seconds),
                 args=[monitor.id, monitor.url],
                 id=job_id,
                 name=f"Monitor: {monitor.name}",
                 replace_existing=True
             )
             
-            logger.info(f"Scheduled monitor {monitor.id} ({monitor.name}) - interval: {monitor.interval}s")
+            logger.info(f"Scheduled monitor {monitor.id} ({monitor.name}) - interval: {monitor.interval_seconds}s")
             
         except Exception as e:
             logger.error(f"Failed to schedule monitor {monitor.id}: {str(e)}")

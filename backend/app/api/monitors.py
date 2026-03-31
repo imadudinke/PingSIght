@@ -17,6 +17,7 @@ from app.schemas.monitor import (
 )
 from app.core.security import get_current_user
 from app.services.monitor_service import MonitorService
+from app.worker.scheduler import monitor_scheduler
 
 router = APIRouter(prefix="/monitors", tags=["monitors"])
 
@@ -50,7 +51,7 @@ async def create_monitor(
         new_monitor = Monitor(
             url=str(monitor_in.url),
             name=monitor_in.friendly_name,
-            interval=monitor_in.interval_seconds,
+            interval_seconds=monitor_in.interval_seconds,
             user_id=current_user.id,
             last_status="PENDING",
             is_active=True
@@ -60,6 +61,8 @@ async def create_monitor(
         db.add(new_monitor)
         await db.commit()
         await db.refresh(new_monitor)
+        await monitor_scheduler.schedule_monitor(new_monitor)
+        await monitor_scheduler.execute_monitor_check(new_monitor.id, new_monitor.url)
         
         # Return response with proper field mapping
         return MonitorResponse(
@@ -67,7 +70,7 @@ async def create_monitor(
             user_id=new_monitor.user_id,
             url=new_monitor.url,
             friendly_name=new_monitor.name,
-            interval_seconds=new_monitor.interval,
+            interval_seconds=new_monitor.interval_seconds,
             status=new_monitor.last_status,
             is_active=new_monitor.is_active,
             last_checked=None,  # New monitors haven't been checked yet
@@ -125,7 +128,7 @@ async def list_monitors(
                 user_id=monitor.user_id,
                 url=monitor.url,
                 friendly_name=monitor.name,
-                interval_seconds=monitor.interval,
+                interval_seconds=monitor.interval_seconds,
                 status=monitor.last_status,
                 is_active=monitor.is_active,
                 last_checked=last_checked,
@@ -181,13 +184,13 @@ async def get_monitor(
     
     # Convert heartbeats to response format
     heartbeat_responses = MonitorService.heartbeats_to_response(heartbeats)
-    
+
     return MonitorDetailResponse(
         id=monitor.id,
         user_id=monitor.user_id,
         url=monitor.url,
         friendly_name=monitor.name,
-        interval_seconds=monitor.interval,
+        interval_seconds=monitor.interval_seconds,
         status=monitor.last_status,
         is_active=monitor.is_active,
         last_checked=last_checked,
@@ -227,7 +230,7 @@ async def update_monitor(
     if "friendly_name" in update_data:
         monitor.name = update_data["friendly_name"]
     if "interval_seconds" in update_data:
-        monitor.interval = update_data["interval_seconds"]
+        monitor.interval_seconds = update_data["interval_seconds"]
     if "is_active" in update_data:
         monitor.is_active = update_data["is_active"]
     
@@ -240,7 +243,7 @@ async def update_monitor(
             user_id=monitor.user_id,
             url=monitor.url,
             friendly_name=monitor.name,
-            interval_seconds=monitor.interval,
+            interval_seconds=monitor.interval_seconds,
             status=monitor.last_status,
             is_active=monitor.is_active,
             last_checked=None,
