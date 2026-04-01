@@ -70,7 +70,8 @@ async def create_monitor(
                 {
                     "name": step.name,
                     "url": str(step.url),
-                    "order": step.order
+                    "order": step.order,
+                    "required_keyword": step.required_keyword  # Include keyword validation
                 }
                 for step in monitor_in.steps
             ]
@@ -307,12 +308,22 @@ async def delete_monitor(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Delete a monitor"""
+    """Delete a monitor and all associated heartbeats"""
+    from uuid import UUID
+    from app.models.heartbeat import Heartbeat
+    from sqlalchemy import delete as sql_delete
     
+    # Convert string to UUID
+    try:
+        monitor_uuid = UUID(monitor_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid monitor ID format")
+    
+    # Check if monitor exists and belongs to user
     result = await db.execute(
         select(Monitor).where(
             and_(
-                Monitor.id == monitor_id,
+                Monitor.id == monitor_uuid,
                 Monitor.user_id == current_user.id
             )
         )
@@ -323,12 +334,22 @@ async def delete_monitor(
         raise HTTPException(status_code=404, detail="Monitor not found")
     
     try:
+        # First, delete all heartbeats associated with this monitor
+        await db.execute(
+            sql_delete(Heartbeat).where(Heartbeat.monitor_id == monitor_uuid)
+        )
+        
+        # Then delete the monitor
         await db.delete(monitor)
         await db.commit()
         return {"message": "Monitor deleted successfully"}
         
-    except SQLAlchemyError:
+    except SQLAlchemyError as e:
         await db.rollback()
+        # Log the actual error for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error deleting monitor {monitor_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Database error occurred")
 
 @router.get("/{monitor_id}/stats")

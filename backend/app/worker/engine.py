@@ -198,18 +198,54 @@ async def perform_scenario_check(steps: list[dict], db: AsyncSession) -> dict:
                 
                 step_timings["total_ms"] = round((time.perf_counter() - step_start) * 1000, 2)
                 
+                # Check status code first
                 step_status = "UP" if response.is_success else "ISSUE"
+                step_error = None
+                
                 if response.status_code >= 500:
                     step_status = "DOWN"
                     all_successful = False
                     if not failed_step:
                         failed_step = step_name
                         failure_reason = f"Server error (HTTP {response.status_code})"
+                    step_error = f"HTTP {response.status_code}"
                 elif response.status_code >= 400:
                     all_successful = False
                     if not failed_step:
                         failed_step = step_name
                         failure_reason = f"Client error (HTTP {response.status_code})"
+                    step_error = f"HTTP {response.status_code}"
+                
+                # KEYWORD VALIDATION (Positive Assertion)
+                # Check if required keyword exists in page content (case-insensitive)
+                required_keyword = step.get('required_keyword')
+                if required_keyword and response.is_success:
+                    logger.info(f"[KEYWORD_CHECK] Checking for keyword '{required_keyword}' in step {step_order}")
+                    
+                    try:
+                        page_content = response.text
+                        # Case-insensitive search
+                        if required_keyword.lower() not in page_content.lower():
+                            # Keyword not found - mark as DOWN
+                            step_status = "DOWN"
+                            all_successful = False
+                            step_error = f"Keyword '{required_keyword}' not found in page content"
+                            
+                            if not failed_step:
+                                failed_step = step_name
+                                failure_reason = f"Required keyword '{required_keyword}' missing from page"
+                            
+                            logger.warning(f"[KEYWORD_CHECK] ✗ Keyword '{required_keyword}' NOT FOUND in step {step_order}")
+                        else:
+                            logger.info(f"[KEYWORD_CHECK] ✓ Keyword '{required_keyword}' found in step {step_order}")
+                    except Exception as e:
+                        logger.error(f"[KEYWORD_CHECK] Error reading page content: {str(e)}")
+                        step_error = f"Failed to read page content: {str(e)}"
+                        step_status = "DOWN"
+                        all_successful = False
+                        if not failed_step:
+                            failed_step = step_name
+                            failure_reason = f"Content validation error: {str(e)}"
                 
                 step_result = {
                     "name": step_name,
@@ -223,7 +259,9 @@ async def perform_scenario_check(steps: list[dict], db: AsyncSession) -> dict:
                     "tcp_ms": step_timings["tcp_ms"],
                     "tls_ms": step_timings["tls_ms"],
                     "ttfb_ms": step_timings["ttfb_ms"],
-                    "error": None if response.is_success else f"HTTP {response.status_code}",
+                    "error": step_error,
+                    "required_keyword": required_keyword,
+                    "keyword_found": required_keyword and step_status == "UP" if required_keyword else None,
                     "checked_at": datetime.now(timezone.utc).isoformat()
                 }
                 
@@ -235,6 +273,12 @@ async def perform_scenario_check(steps: list[dict], db: AsyncSession) -> dict:
                 
                 total_latency += step_timings["total_ms"]
                 step_results.append(step_result)
+                
+                # SHORT-CIRCUIT: If this step failed, stop checking remaining steps
+                # This saves resources and provides faster feedback
+                if step_status == "DOWN":
+                    logger.warning(f"[SCENARIO_CHECK] Short-circuiting: Step {step_order} failed, skipping remaining steps")
+                    break
                 
         except httpx.TimeoutException as e:
             step_timings["total_ms"] = round((time.perf_counter() - step_start) * 1000, 2)
@@ -264,6 +308,10 @@ async def perform_scenario_check(steps: list[dict], db: AsyncSession) -> dict:
             total_latency += step_timings["total_ms"]
             step_results.append(step_result)
             
+            # SHORT-CIRCUIT: Stop on timeout
+            logger.warning(f"[SCENARIO_CHECK] Short-circuiting: Step {step_order} timed out, skipping remaining steps")
+            break
+            
         except httpx.ConnectError as e:
             step_timings["total_ms"] = round((time.perf_counter() - step_start) * 1000, 2)
             logger.error(f"[SCENARIO_CHECK] Step {step_order} connection error: {str(e)}")
@@ -292,6 +340,10 @@ async def perform_scenario_check(steps: list[dict], db: AsyncSession) -> dict:
             total_latency += step_timings["total_ms"]
             step_results.append(step_result)
             
+            # SHORT-CIRCUIT: Stop on connection error
+            logger.warning(f"[SCENARIO_CHECK] Short-circuiting: Step {step_order} connection failed, skipping remaining steps")
+            break
+            
         except Exception as e:
             step_timings["total_ms"] = round((time.perf_counter() - step_start) * 1000, 2)
             logger.error(f"[SCENARIO_CHECK] Step {step_order} failed: {str(e)}")
@@ -319,6 +371,10 @@ async def perform_scenario_check(steps: list[dict], db: AsyncSession) -> dict:
             overall_status_code = 0
             total_latency += step_timings["total_ms"]
             step_results.append(step_result)
+            
+            # SHORT-CIRCUIT: Stop on unexpected error
+            logger.warning(f"[SCENARIO_CHECK] Short-circuiting: Step {step_order} failed unexpectedly, skipping remaining steps")
+            break
     
     # Determine overall status
     if all_successful:

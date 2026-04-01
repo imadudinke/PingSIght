@@ -11,6 +11,7 @@ class ScenarioStep(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Step name")
     url: HttpUrl = Field(..., description="URL to check in this step")
     order: int = Field(..., ge=1, le=3, description="Step order (1-3)")
+    required_keyword: Optional[str] = Field(None, min_length=1, max_length=200, description="Keyword that must appear in page content (case-insensitive)")
 
 
 class HeartbeatResponse(BaseModel):
