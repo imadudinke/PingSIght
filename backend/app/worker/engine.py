@@ -675,6 +675,9 @@ async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:
 async def get_active_monitors(db: AsyncSession) -> list[Monitor]:
     """Return all currently active monitors to schedule."""
     result = await db.execute(
-        select(Monitor).where(Monitor.is_active == True)
+        select(Monitor).where(
+            Monitor.is_active == True,
+            Monitor.monitor_type != "heartbeat",
+        )
     )
     return result.scalars().all()

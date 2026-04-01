@@ -41,6 +41,9 @@ class Monitor(Base):
     domain_days_remaining: Mapped[int | None] = mapped_column(Integer, nullable=True)
     domain_last_checked: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Heartbeat monitoring field
+    last_ping_received: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
     user: Mapped["User"] = relationship("User", back_populates="monitors")

@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Set
 from uuid import UUID
 
@@ -8,7 +8,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.executors.asyncio import AsyncIOExecutor
-from sqlalchemy import update
+from sqlalchemy import update, select
 
 from app.db.session import AsyncSessionLocal
 from app.models.monitor import Monitor
@@ -97,6 +97,10 @@ class MonitorScheduler:
         """
         try:
             logger.debug("Refreshing monitor schedules...")
+
+            # Keep reverse-ping monitor statuses up to date even though
+            # they are not actively checked by the scheduler.
+            await self.refresh_heartbeat_monitor_statuses()
             
             async with AsyncSessionLocal() as db:
                 active_monitors = await get_active_monitors(db)
@@ -125,6 +129,35 @@ class MonitorScheduler:
             
         except Exception as e:
             logger.error(f"Error refreshing monitor schedules: {str(e)}")
+
+    async def refresh_heartbeat_monitor_statuses(self):
+        """Mark heartbeat monitors UP/DOWN based on last received ping."""
+        now = datetime.now(timezone.utc)
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(
+                    select(Monitor).where(
+                        Monitor.is_active == True,
+                        Monitor.is_maintenance == False,
+                        Monitor.monitor_type == "heartbeat",
+                    )
+                )
+                monitors = result.scalars().all()
+
+                for monitor in monitors:
+                    new_status = "PENDING"
+                    if monitor.last_ping_received is not None:
+                        deadline = monitor.last_ping_received + timedelta(
+                            seconds=monitor.interval_seconds
+                        )
+                        new_status = "UP" if now <= deadline else "DOWN"
+
+                    if monitor.last_status != new_status:
+                        monitor.last_status = new_status
+
+                await db.commit()
+        except Exception as e:
+            logger.error(f"Failed to refresh heartbeat monitor statuses: {str(e)}")
     
     async def schedule_monitor(self, monitor):
         """

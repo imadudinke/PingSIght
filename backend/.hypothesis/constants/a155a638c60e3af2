@@ -1,0 +1,4 @@
+# file: /home/imtech/Desktop/pingSight/backend/app/core/config.py
+# hypothesis_version: 6.151.10
+
+['.env', 'ignore']

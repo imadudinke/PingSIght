@@ -1,4 +1,5 @@
 import asyncio
+from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -10,10 +11,11 @@ from app.db.session import get_db
 from app.models.monitor import Monitor
 from app.models.user import User
 from app.schemas.monitor import (
-    MonitorCreate, 
-    MonitorResponse, 
+    MonitorCreate,
+    HeartbeatMonitorCreate,
+    MonitorResponse,
     MonitorDetailResponse,
-    MonitorUpdate, 
+    MonitorUpdate,
     MonitorList
 )
 from app.core.security import get_current_user
@@ -21,6 +23,13 @@ from app.services.monitor_service import MonitorService
 from app.worker.scheduler import monitor_scheduler
 
 router = APIRouter(prefix="/monitors", tags=["monitors"])
+
+
+def _heartbeat_url_for_monitor(monitor: Monitor) -> Optional[str]:
+    """Build the ingestion URL path for heartbeat monitors."""
+    if monitor.monitor_type != "heartbeat":
+        return None
+    return f"/api/heartbeats/{monitor.id}"
 
 
 @router.post("/", response_model=MonitorResponse)
@@ -118,6 +127,8 @@ async def create_monitor(
             created_at=new_monitor.created_at,
             monitor_type=new_monitor.monitor_type,
             steps=new_monitor.steps,
+            last_ping_received=new_monitor.last_ping_received,
+            heartbeat_url=_heartbeat_url_for_monitor(new_monitor),
             domain_status=new_monitor.domain_status,
             domain_expiry_date=new_monitor.domain_expiry_date,
             domain_days_remaining=new_monitor.domain_days_remaining,
@@ -125,6 +136,72 @@ async def create_monitor(
         )
         
     except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Database error occurred")
+
+
+@router.post("/heartbeat", response_model=MonitorResponse)
+async def create_heartbeat_monitor(
+    monitor_in: HeartbeatMonitorCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Create a reverse-ping monitor that expects inbound heartbeats."""
+
+    try:
+        existing_monitor = await db.execute(
+            select(Monitor).where(
+                and_(
+                    Monitor.user_id == current_user.id,
+                    Monitor.name == monitor_in.friendly_name,
+                    Monitor.monitor_type == "heartbeat",
+                )
+            )
+        )
+        if existing_monitor.scalar_one_or_none():
+            raise HTTPException(
+                status_code=400,
+                detail=f"You already have a heartbeat monitor with this name: {monitor_in.friendly_name}"
+            )
+
+        # A placeholder URL is stored for consistency with non-heartbeat monitors.
+        new_monitor = Monitor(
+            url=f"heartbeat://{current_user.id}/{uuid4()}",
+            name=monitor_in.friendly_name,
+            interval_seconds=monitor_in.interval_seconds,
+            user_id=current_user.id,
+            last_status="PENDING",
+            is_active=True,
+            monitor_type="heartbeat",
+            steps=None,
+        )
+
+        db.add(new_monitor)
+        await db.commit()
+        await db.refresh(new_monitor)
+
+        return MonitorResponse(
+            id=new_monitor.id,
+            user_id=new_monitor.user_id,
+            url=new_monitor.url,
+            friendly_name=new_monitor.name,
+            interval_seconds=new_monitor.interval_seconds,
+            status=new_monitor.last_status,
+            is_active=new_monitor.is_active,
+            is_maintenance=new_monitor.is_maintenance,
+            last_checked=None,
+            created_at=new_monitor.created_at,
+            monitor_type=new_monitor.monitor_type,
+            steps=new_monitor.steps,
+            last_ping_received=new_monitor.last_ping_received,
+            heartbeat_url=_heartbeat_url_for_monitor(new_monitor),
+            domain_status=new_monitor.domain_status,
+            domain_expiry_date=new_monitor.domain_expiry_date,
+            domain_days_remaining=new_monitor.domain_days_remaining,
+            domain_last_checked=new_monitor.domain_last_checked,
+        )
+
+    except SQLAlchemyError:
         await db.rollback()
         raise HTTPException(status_code=500, detail="Database error occurred")
 
@@ -186,6 +263,8 @@ async def list_monitors(
                 ssl_days_remaining=monitor.ssl_days_remaining,
                 monitor_type=monitor.monitor_type,
                 steps=monitor.steps,
+                last_ping_received=monitor.last_ping_received,
+                heartbeat_url=_heartbeat_url_for_monitor(monitor),
                 domain_status=monitor.domain_status,
                 domain_expiry_date=monitor.domain_expiry_date,
                 domain_days_remaining=monitor.domain_days_remaining,
@@ -258,6 +337,8 @@ async def get_monitor(
         ssl_days_remaining=monitor.ssl_days_remaining,
         monitor_type=monitor.monitor_type,
         steps=monitor.steps,
+        last_ping_received=monitor.last_ping_received,
+        heartbeat_url=_heartbeat_url_for_monitor(monitor),
         domain_status=monitor.domain_status,
         domain_expiry_date=monitor.domain_expiry_date,
         domain_days_remaining=monitor.domain_days_remaining,
@@ -321,6 +402,10 @@ async def update_monitor(
             ssl_status=monitor.ssl_status,
             ssl_expiry_date=monitor.ssl_expiry_date,
             ssl_days_remaining=monitor.ssl_days_remaining,
+            monitor_type=monitor.monitor_type,
+            steps=monitor.steps,
+            last_ping_received=monitor.last_ping_received,
+            heartbeat_url=_heartbeat_url_for_monitor(monitor),
             domain_status=monitor.domain_status,
             domain_expiry_date=monitor.domain_expiry_date,
             domain_days_remaining=monitor.domain_days_remaining,
@@ -415,6 +500,8 @@ async def _set_maintenance(
         ssl_days_remaining=monitor.ssl_days_remaining,
         monitor_type=monitor.monitor_type,
         steps=monitor.steps,
+        last_ping_received=monitor.last_ping_received,
+        heartbeat_url=_heartbeat_url_for_monitor(monitor),
         domain_status=monitor.domain_status,
         domain_expiry_date=monitor.domain_expiry_date,
         domain_days_remaining=monitor.domain_days_remaining,

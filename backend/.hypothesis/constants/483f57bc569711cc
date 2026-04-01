@@ -1,0 +1,4 @@
+# file: /home/imtech/Desktop/pingSight/backend/app/models/social_account.py
+# hypothesis_version: 6.151.10
+
+[255, 'User', 'provider', 'provider_account_id', 'social_accounts', 'uq_provider_account', 'users.id']

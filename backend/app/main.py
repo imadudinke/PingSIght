@@ -8,6 +8,7 @@ load_dotenv()
 
 from .api.auth import router as auth_router
 from .api.monitors import router as monitors_router
+from .api.heartbeats import router as heartbeats_router
 from .api.status import router as status_router
 from .core.security import get_current_user
 from .core.config import get_settings
@@ -44,6 +45,7 @@ app = FastAPI(
 # Include routers
 app.include_router(auth_router, tags=["authentication"])
 app.include_router(monitors_router, tags=["monitors"])
+app.include_router(heartbeats_router, prefix="/api", tags=["heartbeats"])
 app.include_router(status_router, tags=["status"])
 
 

@@ -40,6 +40,32 @@ class HeartbeatResponse(BaseModel):
         from_attributes = True
 
 
+class HeartbeatMonitorCreate(BaseModel):
+    """Request model for creating heartbeat monitor"""
+    friendly_name: str = Field(..., min_length=1, max_length=50)
+    interval_seconds: int = Field(..., description="How often heartbeat is expected (minimum 60 seconds)")
+    monitor_type: Literal["heartbeat"] = Field(default="heartbeat", description="Monitor type (must be heartbeat)")
+    
+    @field_validator('interval_seconds')
+    @classmethod
+    def validate_interval(cls, v):
+        if v < 60:
+            raise ValueError('Heartbeat interval must be at least 60 seconds')
+        return v
+
+
+class HeartbeatReceiveResponse(BaseModel):
+    """Response when heartbeat ping is received"""
+    success: bool = Field(..., description="Whether the heartbeat was successfully received")
+    message: str = Field(..., description="Human-readable message about the heartbeat reception")
+    monitor_id: UUID = Field(..., description="ID of the monitor that received the heartbeat")
+    received_at: datetime = Field(..., description="Timestamp when the heartbeat was received")
+    next_expected_at: datetime = Field(..., description="Timestamp when the next heartbeat is expected")
+    
+    class Config:
+        from_attributes = True
+
+
 class MonitorCreate(BaseModel):
     url: HttpUrl
     friendly_name: str = Field(..., min_length=1, max_length=50)
@@ -150,6 +176,10 @@ class MonitorResponse(BaseModel):
     domain_expiry_date: Optional[datetime] = None
     domain_days_remaining: Optional[int] = None
     domain_last_checked: Optional[datetime] = None
+
+    # Heartbeat monitoring fields (only populated for heartbeat monitors)
+    last_ping_received: Optional[datetime] = Field(None, description="Timestamp of last received heartbeat ping (heartbeat monitors only)")
+    heartbeat_url: Optional[str] = Field(None, description="URL to send heartbeat pings to (heartbeat monitors only)")
 
     class Config:
         from_attributes = True
