@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from sqlalchemy.exc import SQLAlchemyError
 
 # Import your models (Ensure these paths are correct for your project)
@@ -27,7 +27,60 @@ class DetailedTimings:
     ttfb_ms: float = 0.0
     total_ms: float = 0.0
     dns_ms: float = 0.0
+
+
+async def get_average_latency(db: AsyncSession, monitor_id: UUID, limit: int = 10) -> float:
+    """
+    Calculate the average latency of the last N successful checks for anomaly detection.
     
+    Args:
+        db: Database session
+        monitor_id: Monitor UUID
+        limit: Number of recent checks to average (default: 10)
+        
+    Returns:
+        Average latency in milliseconds, or 0.0 if no data
+    """
+    try:
+        # Get the last N successful heartbeats (status 200-399)
+        result = await db.execute(
+            select(func.avg(Heartbeat.latency_ms))
+            .where(Heartbeat.monitor_id == monitor_id)
+            .where(Heartbeat.status_code >= 200)
+            .where(Heartbeat.status_code < 400)
+            .order_by(Heartbeat.created_at.desc())
+            .limit(limit)
+        )
+        
+        avg = result.scalar()
+        return float(avg) if avg else 0.0
+        
+    except Exception as e:
+        logger.error(f"[ANOMALY] Error calculating average latency: {str(e)}")
+        return 0.0
+
+
+def detect_anomaly(current_latency: float, average_latency: float, threshold: float = 3.0) -> bool:
+    """
+    Detect if current latency is anomalous using the 3x rule.
+    
+    Args:
+        current_latency: Current check latency in ms
+        average_latency: Average of recent checks in ms
+        threshold: Multiplier for anomaly detection (default: 3.0)
+        
+    Returns:
+        True if anomaly detected, False otherwise
+    """
+    # Need at least some baseline data
+    if average_latency <= 0:
+        return False
+    
+    # Check if current is significantly higher than average
+    if current_latency > (average_latency * threshold):
+        return True
+    
+    return False
     def to_dict(self) -> Dict[str, float]:
         return {
             "tcp_connect_ms": self.tcp_ms,
@@ -407,7 +460,7 @@ async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:
     logger.info(f"[PERFORM_CHECK] Starting check for monitor {monitor_id}, URL: {url}")
     check_time = datetime.now(timezone.utc)
     
-    # Get monitor to check type
+    # Get monitor to check type and maintenance status
     monitor_result = await db.execute(
         select(Monitor).where(Monitor.id == monitor_id)
     )
@@ -416,6 +469,29 @@ async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:
     if not monitor:
         logger.error(f"[PERFORM_CHECK] Monitor {monitor_id} not found")
         return {"status": "ERROR", "error": "Monitor not found"}
+    
+    # THE SILENT SHIELD: Check maintenance mode
+    if monitor.is_maintenance:
+        # Check if auto-resume time has passed
+        if monitor.maintenance_until and check_time > monitor.maintenance_until:
+            # Auto-resume! Turn off maintenance mode
+            await db.execute(
+                update(Monitor)
+                .where(Monitor.id == monitor_id)
+                .values(is_maintenance=False, maintenance_until=None)
+            )
+            await db.commit()
+            logger.info(f"[MAINTENANCE] ✓ Maintenance expired for {url}. Resuming monitoring...")
+        else:
+            # Skip the check entirely
+            if monitor.maintenance_until:
+                logger.info(
+                    f"[MAINTENANCE] 🛡️  Skipping check for {url}: "
+                    f"Maintenance Mode active until {monitor.maintenance_until}"
+                )
+            else:
+                logger.info(f"[MAINTENANCE] 🛡️  Skipping check for {url}: Maintenance Mode active (manual)")
+            return {"status": "MAINTENANCE", "skipped": True}
     
     # Check if this is a scenario monitor
     is_scenario = monitor.monitor_type == "scenario" and monitor.steps
@@ -449,6 +525,22 @@ async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:
                 update(Monitor).where(Monitor.id == monitor_id).values(**update_values)
             )
             
+            # ANOMALY DETECTION: Calculate average and detect anomalies for scenarios
+            avg_latency = await get_average_latency(db, monitor_id, limit=10)
+            is_anomaly = detect_anomaly(scenario_result["total_latency_ms"], avg_latency, threshold=3.0)
+            
+            if is_anomaly:
+                logger.warning(
+                    f"[ANOMALY] ⚠️  Anomaly detected for scenario monitor {monitor_id}! "
+                    f"Current: {scenario_result['total_latency_ms']:.2f}ms vs Average: {avg_latency:.2f}ms "
+                    f"(3x threshold exceeded)"
+                )
+            else:
+                logger.debug(
+                    f"[ANOMALY] ✓ Normal latency for scenario monitor {monitor_id}: "
+                    f"{scenario_result['total_latency_ms']:.2f}ms (avg: {avg_latency:.2f}ms)"
+                )
+            
             # Create heartbeat with step results
             new_heartbeat = Heartbeat(
                 monitor_id=monitor_id,
@@ -465,6 +557,7 @@ async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:
                     "summary": scenario_result.get("summary")
                 },
                 step_results=scenario_result["step_results"],  # Store step results in JSONB
+                is_anomaly=is_anomaly,  # Anomaly detection flag
                 error_message=scenario_result.get("failure_reason") if scenario_result["status"] != "UP" else None,
                 created_at=check_time
             )
@@ -535,6 +628,22 @@ async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:
             )
             logger.info(f"[DB_UPDATE] Monitor {monitor_id} updated successfully")
             
+            # ANOMALY DETECTION: Calculate average and detect anomalies
+            avg_latency = await get_average_latency(db, monitor_id, limit=10)
+            is_anomaly = detect_anomaly(timings.total_ms, avg_latency, threshold=3.0)
+            
+            if is_anomaly:
+                logger.warning(
+                    f"[ANOMALY] ⚠️  Anomaly detected for monitor {monitor_id}! "
+                    f"Current: {timings.total_ms:.2f}ms vs Average: {avg_latency:.2f}ms "
+                    f"(3x threshold exceeded)"
+                )
+            else:
+                logger.debug(
+                    f"[ANOMALY] ✓ Normal latency for monitor {monitor_id}: "
+                    f"{timings.total_ms:.2f}ms (avg: {avg_latency:.2f}ms)"
+                )
+            
             # Create Heartbeat Record
             new_heartbeat = Heartbeat(
                 monitor_id=monitor_id,
@@ -545,6 +654,7 @@ async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:
                 ttfb_ms=timings.ttfb_ms,
                 timing_details=result["metrics"], # The JSONB field
                 step_results=None,  # No steps for simple monitors
+                is_anomaly=is_anomaly,  # Anomaly detection flag
                 error_message=result["error"],
                 created_at=check_time
             )

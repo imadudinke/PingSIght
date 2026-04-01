@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from sqlalchemy import BigInteger, DateTime, Float, ForeignKey, Integer, Text, func, Uuid, JSON
+from sqlalchemy import BigInteger, DateTime, Float, ForeignKey, Integer, Text, func, Uuid, JSON, Boolean as sa_Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB
+import sqlalchemy as sa
 
 from app.db.base import Base
 
@@ -26,6 +27,9 @@ class Heartbeat(Base):
     # Scenario step results (for scenario monitors)
     # Format: [{"name": "Login", "url": "...", "status": "UP", "status_code": 200, "latency_ms": 150, "error": null}, ...]
     step_results: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    
+    # Anomaly detection flag
+    is_anomaly: Mapped[bool] = mapped_column(sa.Boolean, default=False, server_default='false')
     
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), index=True)

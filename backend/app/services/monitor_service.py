@@ -165,6 +165,7 @@ class MonitorService:
                 ttfb_ms=getattr(hb, 'ttfb_ms', None),
                 timing_details=getattr(hb, 'timing_details', None),
                 step_results=getattr(hb, 'step_results', None),
+                is_anomaly=getattr(hb, 'is_anomaly', False),
                 error_message=hb.error_message,
                 created_at=hb.created_at.replace(tzinfo=timezone.utc) if hb.created_at.tzinfo is None else hb.created_at
             )
