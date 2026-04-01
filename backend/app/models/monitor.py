@@ -34,7 +34,13 @@ class Monitor(Base):
     ssl_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     ssl_expiry_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ssl_days_remaining: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    
+
+    # Domain Expiration fields
+    domain_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    domain_expiry_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    domain_days_remaining: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    domain_last_checked: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
     user: Mapped["User"] = relationship("User", back_populates="monitors")

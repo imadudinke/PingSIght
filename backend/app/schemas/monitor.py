@@ -144,7 +144,13 @@ class MonitorResponse(BaseModel):
     ssl_status: Optional[str] = None
     ssl_expiry_date: Optional[datetime] = None
     ssl_days_remaining: Optional[int] = None
-    
+
+    # Domain Expiration fields
+    domain_status: Optional[str] = None
+    domain_expiry_date: Optional[datetime] = None
+    domain_days_remaining: Optional[int] = None
+    domain_last_checked: Optional[datetime] = None
+
     class Config:
         from_attributes = True
 

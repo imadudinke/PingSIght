@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -98,6 +99,10 @@ async def create_monitor(
         
         # Execute initial check
         await monitor_scheduler.execute_monitor_check(new_monitor.id, new_monitor.url)
+
+        # Fire-and-forget immediate domain check so new monitors don't wait
+        # up to 24h for the next batch sweep to populate domain fields.
+        asyncio.create_task(monitor_scheduler.check_domain_for_monitor(new_monitor))
         
         # Return response with proper field mapping
         return MonitorResponse(
@@ -112,7 +117,11 @@ async def create_monitor(
             last_checked=None,
             created_at=new_monitor.created_at,
             monitor_type=new_monitor.monitor_type,
-            steps=new_monitor.steps
+            steps=new_monitor.steps,
+            domain_status=new_monitor.domain_status,
+            domain_expiry_date=new_monitor.domain_expiry_date,
+            domain_days_remaining=new_monitor.domain_days_remaining,
+            domain_last_checked=new_monitor.domain_last_checked,
         )
         
     except SQLAlchemyError as e:
@@ -176,7 +185,11 @@ async def list_monitors(
                 ssl_expiry_date=monitor.ssl_expiry_date,
                 ssl_days_remaining=monitor.ssl_days_remaining,
                 monitor_type=monitor.monitor_type,
-                steps=monitor.steps
+                steps=monitor.steps,
+                domain_status=monitor.domain_status,
+                domain_expiry_date=monitor.domain_expiry_date,
+                domain_days_remaining=monitor.domain_days_remaining,
+                domain_last_checked=monitor.domain_last_checked,
             )
         )
     
@@ -245,6 +258,10 @@ async def get_monitor(
         ssl_days_remaining=monitor.ssl_days_remaining,
         monitor_type=monitor.monitor_type,
         steps=monitor.steps,
+        domain_status=monitor.domain_status,
+        domain_expiry_date=monitor.domain_expiry_date,
+        domain_days_remaining=monitor.domain_days_remaining,
+        domain_last_checked=monitor.domain_last_checked,
         recent_heartbeats=heartbeat_responses,
         uptime_percentage=stats.uptime_percentage,
         average_latency=stats.average_latency,
@@ -300,7 +317,14 @@ async def update_monitor(
             is_active=monitor.is_active,
             is_maintenance=monitor.is_maintenance,
             last_checked=None,
-            created_at=monitor.created_at
+            created_at=monitor.created_at,
+            ssl_status=monitor.ssl_status,
+            ssl_expiry_date=monitor.ssl_expiry_date,
+            ssl_days_remaining=monitor.ssl_days_remaining,
+            domain_status=monitor.domain_status,
+            domain_expiry_date=monitor.domain_expiry_date,
+            domain_days_remaining=monitor.domain_days_remaining,
+            domain_last_checked=monitor.domain_last_checked,
         )
         
     except SQLAlchemyError:
@@ -391,6 +415,10 @@ async def _set_maintenance(
         ssl_days_remaining=monitor.ssl_days_remaining,
         monitor_type=monitor.monitor_type,
         steps=monitor.steps,
+        domain_status=monitor.domain_status,
+        domain_expiry_date=monitor.domain_expiry_date,
+        domain_days_remaining=monitor.domain_days_remaining,
+        domain_last_checked=monitor.domain_last_checked,
     )
 
 
