@@ -20,6 +20,7 @@ class Monitor(Base):
     name: Mapped[str] = mapped_column(String(255))
     interval_seconds: Mapped[int] = mapped_column("interval", Integer)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_maintenance: Mapped[bool] = mapped_column(Boolean, default=False)
     last_status: Mapped[str] = mapped_column(String(32), default="PENDING")
     
     # Monitor type: 'simple' or 'scenario'

@@ -108,6 +108,7 @@ async def create_monitor(
             interval_seconds=new_monitor.interval_seconds,
             status=new_monitor.last_status,
             is_active=new_monitor.is_active,
+            is_maintenance=new_monitor.is_maintenance,
             last_checked=None,
             created_at=new_monitor.created_at,
             monitor_type=new_monitor.monitor_type,
@@ -168,6 +169,7 @@ async def list_monitors(
                 interval_seconds=monitor.interval_seconds,
                 status=monitor.last_status,
                 is_active=monitor.is_active,
+                is_maintenance=monitor.is_maintenance,
                 last_checked=last_checked,
                 created_at=monitor.created_at,
                 ssl_status=monitor.ssl_status,
@@ -235,6 +237,7 @@ async def get_monitor(
         interval_seconds=monitor.interval_seconds,
         status=monitor.last_status,
         is_active=monitor.is_active,
+        is_maintenance=monitor.is_maintenance,
         last_checked=last_checked,
         created_at=monitor.created_at,
         ssl_status=monitor.ssl_status,
@@ -280,6 +283,8 @@ async def update_monitor(
         monitor.interval_seconds = update_data["interval_seconds"]
     if "is_active" in update_data:
         monitor.is_active = update_data["is_active"]
+    if "is_maintenance" in update_data:
+        monitor.is_maintenance = update_data["is_maintenance"]
     
     try:
         await db.commit()
@@ -293,6 +298,7 @@ async def update_monitor(
             interval_seconds=monitor.interval_seconds,
             status=monitor.last_status,
             is_active=monitor.is_active,
+            is_maintenance=monitor.is_maintenance,
             last_checked=None,
             created_at=monitor.created_at
         )
@@ -300,6 +306,92 @@ async def update_monitor(
     except SQLAlchemyError:
         await db.rollback()
         raise HTTPException(status_code=500, detail="Database error occurred")
+
+
+@router.put("/{monitor_id}/maintenance", response_model=MonitorResponse)
+async def enable_maintenance(
+    monitor_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Enable maintenance mode for a monitor — checks are paused until disabled."""
+    return await _set_maintenance(monitor_id, True, db, current_user)
+
+
+@router.delete("/{monitor_id}/maintenance", response_model=MonitorResponse)
+async def disable_maintenance(
+    monitor_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Disable maintenance mode — monitor resumes normal checks on the next scheduler cycle."""
+    return await _set_maintenance(monitor_id, False, db, current_user)
+
+
+async def _set_maintenance(
+    monitor_id: str,
+    enabled: bool,
+    db: AsyncSession,
+    current_user: User
+) -> MonitorResponse:
+    from uuid import UUID
+    try:
+        monitor_uuid = UUID(monitor_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid monitor ID format")
+
+    result = await db.execute(
+        select(Monitor).where(
+            and_(Monitor.id == monitor_uuid, Monitor.user_id == current_user.id)
+        )
+    )
+    monitor = result.scalar_one_or_none()
+    if not monitor:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+
+    monitor.is_maintenance = enabled
+
+    try:
+        await db.commit()
+        await db.refresh(monitor)
+    except SQLAlchemyError:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Database error occurred")
+
+    # Sync scheduler: remove job when entering maintenance, reschedule when leaving
+    if enabled:
+        try:
+            monitor_scheduler.scheduler.remove_job(f"monitor_{monitor.id}")
+        except Exception:
+            pass
+    else:
+        await monitor_scheduler.schedule_monitor(monitor)
+
+    latest_heartbeat = await MonitorService.get_latest_heartbeat(db, monitor_uuid)
+    last_checked = None
+    if latest_heartbeat:
+        from datetime import timezone
+        last_checked = latest_heartbeat.created_at
+        if last_checked.tzinfo is None:
+            last_checked = last_checked.replace(tzinfo=timezone.utc)
+
+    return MonitorResponse(
+        id=monitor.id,
+        user_id=monitor.user_id,
+        url=monitor.url,
+        friendly_name=monitor.name,
+        interval_seconds=monitor.interval_seconds,
+        status=monitor.last_status,
+        is_active=monitor.is_active,
+        is_maintenance=monitor.is_maintenance,
+        last_checked=last_checked,
+        created_at=monitor.created_at,
+        ssl_status=monitor.ssl_status,
+        ssl_expiry_date=monitor.ssl_expiry_date,
+        ssl_days_remaining=monitor.ssl_days_remaining,
+        monitor_type=monitor.monitor_type,
+        steps=monitor.steps,
+    )
 
 
 @router.delete("/{monitor_id}")

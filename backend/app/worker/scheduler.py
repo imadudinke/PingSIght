@@ -117,7 +117,16 @@ class MonitorScheduler:
             monitor: Monitor object from database
         """
         job_id = f"monitor_{monitor.id}"
-        
+
+        if monitor.is_maintenance:
+            # Monitor is in maintenance mode — remove any existing job so no checks fire
+            try:
+                self.scheduler.remove_job(job_id)
+                logger.info(f"Removed job for monitor {monitor.id} ({monitor.name}) — maintenance mode active")
+            except Exception:
+                pass
+            return
+
         try:
             # Check if job already exists with same interval
             existing_job = self.scheduler.get_job(job_id)

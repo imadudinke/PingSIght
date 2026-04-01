@@ -132,6 +132,7 @@ class MonitorResponse(BaseModel):
     interval_seconds: int
     status: str
     is_active: bool
+    is_maintenance: bool = False
     last_checked: Optional[datetime] = None
     created_at: datetime
     
@@ -174,6 +175,7 @@ class MonitorUpdate(BaseModel):
     friendly_name: Optional[str] = Field(None, min_length=1, max_length=50)
     interval_seconds: Optional[int] = Field(None, ge=30, le=3600)
     is_active: Optional[bool] = None
+    is_maintenance: Optional[bool] = None
 
 
 class MonitorList(BaseModel):
