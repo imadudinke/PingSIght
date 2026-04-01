@@ -27,6 +27,16 @@ class DetailedTimings:
     ttfb_ms: float = 0.0
     total_ms: float = 0.0
     dns_ms: float = 0.0
+    
+    def to_dict(self) -> dict:
+        """Convert timings to dictionary"""
+        return {
+            "tcp_connect_ms": self.tcp_ms,
+            "tls_handshake_ms": self.tls_ms,
+            "ttfb_ms": self.ttfb_ms,
+            "total_ms": self.total_ms,
+            "dns_ms": self.dns_ms
+        }
 
 
 async def get_average_latency(db: AsyncSession, monitor_id: UUID, limit: int = 10) -> float:
@@ -42,21 +52,26 @@ async def get_average_latency(db: AsyncSession, monitor_id: UUID, limit: int = 1
         Average latency in milliseconds, or 0.0 if no data
     """
     try:
-        # Get the last N successful heartbeats (status 200-399)
-        result = await db.execute(
-            select(func.avg(Heartbeat.latency_ms))
+        # Subquery: select the last N successful heartbeat latencies first,
+        # then aggregate — required by PostgreSQL when mixing ORDER BY with aggregates.
+        subq = (
+            select(Heartbeat.latency_ms)
             .where(Heartbeat.monitor_id == monitor_id)
             .where(Heartbeat.status_code >= 200)
             .where(Heartbeat.status_code < 400)
             .order_by(Heartbeat.created_at.desc())
             .limit(limit)
+            .subquery()
         )
-        
+        result = await db.execute(select(func.avg(subq.c.latency_ms)))
         avg = result.scalar()
         return float(avg) if avg else 0.0
         
     except Exception as e:
         logger.error(f"[ANOMALY] Error calculating average latency: {str(e)}")
+        # Rollback to clear the aborted transaction state so subsequent
+        # DB operations (e.g. INSERT heartbeat) are not blocked.
+        await db.rollback()
         return 0.0
 
 
@@ -460,7 +475,7 @@ async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:
     logger.info(f"[PERFORM_CHECK] Starting check for monitor {monitor_id}, URL: {url}")
     check_time = datetime.now(timezone.utc)
     
-    # Get monitor to check type and maintenance status
+    # Get monitor to check type
     monitor_result = await db.execute(
         select(Monitor).where(Monitor.id == monitor_id)
     )
@@ -469,29 +484,6 @@ async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:
     if not monitor:
         logger.error(f"[PERFORM_CHECK] Monitor {monitor_id} not found")
         return {"status": "ERROR", "error": "Monitor not found"}
-    
-    # THE SILENT SHIELD: Check maintenance mode
-    if monitor.is_maintenance:
-        # Check if auto-resume time has passed
-        if monitor.maintenance_until and check_time > monitor.maintenance_until:
-            # Auto-resume! Turn off maintenance mode
-            await db.execute(
-                update(Monitor)
-                .where(Monitor.id == monitor_id)
-                .values(is_maintenance=False, maintenance_until=None)
-            )
-            await db.commit()
-            logger.info(f"[MAINTENANCE] ✓ Maintenance expired for {url}. Resuming monitoring...")
-        else:
-            # Skip the check entirely
-            if monitor.maintenance_until:
-                logger.info(
-                    f"[MAINTENANCE] 🛡️  Skipping check for {url}: "
-                    f"Maintenance Mode active until {monitor.maintenance_until}"
-                )
-            else:
-                logger.info(f"[MAINTENANCE] 🛡️  Skipping check for {url}: Maintenance Mode active (manual)")
-            return {"status": "MAINTENANCE", "skipped": True}
     
     # Check if this is a scenario monitor
     is_scenario = monitor.monitor_type == "scenario" and monitor.steps

@@ -158,8 +158,14 @@ class MonitorScheduler:
         """
         try:
             async with AsyncSessionLocal() as db:
-                result = await perform_check(monitor_id, url, db)
-                logger.debug(f"Monitor check completed: {result}")
+                try:
+                    result = await perform_check(monitor_id, url, db)
+                    logger.debug(f"Monitor check completed: {result}")
+                except Exception as e:
+                    # Ensure rollback on any error
+                    await db.rollback()
+                    logger.error(f"Error in perform_check for {monitor_id}: {str(e)}", exc_info=True)
+                    raise
                 
         except Exception as e:
             logger.error(f"Error executing monitor check for {monitor_id}: {str(e)}")

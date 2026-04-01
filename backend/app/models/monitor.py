@@ -34,10 +34,6 @@ class Monitor(Base):
     ssl_expiry_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ssl_days_remaining: Mapped[int | None] = mapped_column(Integer, nullable=True)
     
-    # Maintenance Mode fields
-    is_maintenance: Mapped[bool] = mapped_column(Boolean, default=False, server_default='false')
-    maintenance_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
     user: Mapped["User"] = relationship("User", back_populates="monitors")

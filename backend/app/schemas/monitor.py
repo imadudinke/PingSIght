@@ -144,10 +144,6 @@ class MonitorResponse(BaseModel):
     ssl_expiry_date: Optional[datetime] = None
     ssl_days_remaining: Optional[int] = None
     
-    # Maintenance Mode fields
-    is_maintenance: bool = False
-    maintenance_until: Optional[datetime] = None
-    
     class Config:
         from_attributes = True
 
@@ -178,25 +174,6 @@ class MonitorUpdate(BaseModel):
     friendly_name: Optional[str] = Field(None, min_length=1, max_length=50)
     interval_seconds: Optional[int] = Field(None, ge=30, le=3600)
     is_active: Optional[bool] = None
-    is_maintenance: Optional[bool] = None
-    maintenance_until: Optional[datetime] = None
-
-
-class MaintenanceModeRequest(BaseModel):
-    """Request to enable/disable maintenance mode"""
-    duration_minutes: Optional[int] = Field(None, ge=1, le=10080, description="Duration in minutes (max 1 week)")
-    
-    class Config:
-        json_schema_extra = {
-            "examples": [
-                {
-                    "duration_minutes": 60
-                },
-                {
-                    "duration_minutes": 120
-                }
-            ]
-        }
 
 
 class MonitorList(BaseModel):

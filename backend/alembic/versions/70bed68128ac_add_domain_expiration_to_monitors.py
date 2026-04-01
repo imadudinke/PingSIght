@@ -1,8 +1,8 @@
-"""add_maintenance_mode_to_monitors
+"""add_domain_expiration_to_monitors
 
-Revision ID: 2d085e61e148
-Revises: 4459b3fd5568
-Create Date: 2026-04-01 09:34:42.534370
+Revision ID: 70bed68128ac
+Revises: 2d085e61e148
+Create Date: 2026-04-01 10:20:45.203333
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '2d085e61e148'
-down_revision: Union[str, Sequence[str], None] = '4459b3fd5568'
+revision: str = '70bed68128ac'
+down_revision: Union[str, Sequence[str], None] = '2d085e61e148'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
