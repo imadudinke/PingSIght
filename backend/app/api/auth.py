@@ -64,19 +64,10 @@ async def auth_callback(request: Request, db: AsyncSession = Depends(get_db)):
             # Generate access token
             access_token, expires_at = create_access_token(data={"sub": existing_user.email})
             
-            return {
-                "message": "Login Successful!",
-                "access_token": access_token,
-                "token_type": "bearer",
-                "expires_at": expires_at.isoformat(),
-                "expires_in": settings.access_token_expire_minutes * 60,  # seconds
-                "user_details": {
-                    "id": str(existing_user.id),
-                    "email": existing_user.email,
-                    "display_name": user_info.display_name,
-                    "picture": user_info.picture
-                }
-            }
+            # Redirect to frontend with token
+            from fastapi.responses import RedirectResponse
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+            return RedirectResponse(url=f"{frontend_url}/auth/callback?token={access_token}")
         else:
             # Create new user
             new_user = User(email=user_info.email)
@@ -96,25 +87,22 @@ async def auth_callback(request: Request, db: AsyncSession = Depends(get_db)):
             # Generate access token for new user
             access_token, expires_at = create_access_token(data={"sub": new_user.email})
             
-            return {
-                "message": "Registration and Login Successful!",
-                "access_token": access_token,
-                "token_type": "bearer",
-                "expires_at": expires_at.isoformat(),
-                "expires_in": settings.access_token_expire_minutes * 60,  # seconds
-                "user_details": {
-                    "id": str(new_user.id),
-                    "email": new_user.email,
-                    "display_name": user_info.display_name,
-                    "picture": user_info.picture
-                }
-            }
+            # Redirect to frontend with token
+            from fastapi.responses import RedirectResponse
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+            return RedirectResponse(url=f"{frontend_url}/auth/callback?token={access_token}")
     
     except SQLAlchemyError as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail="Database error occurred")
+        # Redirect to frontend with error
+        from fastapi.responses import RedirectResponse
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        return RedirectResponse(url=f"{frontend_url}/?error=database_error")
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Authentication failed")
+        # Redirect to frontend with error
+        from fastapi.responses import RedirectResponse
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        return RedirectResponse(url=f"{frontend_url}/?error=auth_failed")
 
 
 @router.get("/me")

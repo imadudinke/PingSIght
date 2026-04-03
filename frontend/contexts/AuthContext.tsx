@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import Cookies from 'js-cookie';
-import { client } from '@/app/client';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { client } from '@/lib/api/client.gen';
+import { setAuthToken, getAuthToken, removeAuthToken, isTokenExpired } from '@/lib/utils/auth';
 
 interface User {
   id: string;
@@ -17,68 +18,137 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  checkTokenExpiry: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
-  useEffect(() => {
-    // Configure client base URL
+  const logout = useCallback(() => {
+    removeAuthToken();
+    setUser(null);
     client.setConfig({
-      baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+      baseUrl: API_URL,
+      headers: {},
     });
+    router.push('/');
+  }, [router]);
 
-    // Check if user is already logged in
-    const token = Cookies.get('access_token');
-    if (token) {
-      fetchCurrentUser();
-    } else {
-      setIsLoading(false);
+  const checkTokenExpiry = useCallback(() => {
+    if (isTokenExpired()) {
+      console.log('Token expired, logging out...');
+      logout();
     }
-  }, []);
+  }, [logout]);
 
-  const fetchCurrentUser = async () => {
+  const fetchCurrentUser = useCallback(async () => {
     try {
-      const token = Cookies.get('access_token');
+      const token = getAuthToken();
       if (!token) {
         setIsLoading(false);
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/me`, {
+      // Check if token is expired before making request
+      if (isTokenExpired()) {
+        console.log('Token expired during fetch');
+        logout();
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/auth/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
       });
 
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+        
+        // Configure client with token
+        client.setConfig({
+          baseUrl: API_URL,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } else if (response.status === 401) {
+        console.log('Unauthorized, logging out...');
+        logout();
       } else {
-        Cookies.remove('access_token');
+        console.error('Failed to fetch user, status:', response.status);
+        removeAuthToken();
+        setUser(null);
       }
     } catch (error) {
       console.error('Failed to fetch user:', error);
-      Cookies.remove('access_token');
+      removeAuthToken();
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [logout]);
+
+  useEffect(() => {
+    // Configure client base URL
+    client.setConfig({
+      baseUrl: API_URL,
+    });
+
+    // Check if user is already logged in
+    const token = getAuthToken();
+    if (token && !isTokenExpired()) {
+      fetchCurrentUser();
+    } else {
+      if (token) {
+        // Token exists but expired
+        removeAuthToken();
+      }
+      setIsLoading(false);
+    }
+  }, [fetchCurrentUser]);
+
+  // Set up interval to check token expiry every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkTokenExpiry();
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [checkTokenExpiry]);
+
+  // Check token expiry on visibility change (when user returns to tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkTokenExpiry();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [checkTokenExpiry]);
 
   const login = async (username: string, password: string) => {
     const formData = new URLSearchParams();
     formData.append('username', username);
     formData.append('password', password);
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/login`, {
+    const response = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: formData,
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -88,12 +158,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const data = await response.json();
     
-    // Store token in cookie
-    Cookies.set('access_token', data.access_token, { expires: 7 });
+    // Store token with 24 hour expiry
+    setAuthToken(data.access_token, 1440);
     
     // Set auth header for all future requests
     client.setConfig({
-      baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+      baseUrl: API_URL,
       headers: {
         Authorization: `Bearer ${data.access_token}`,
       },
@@ -103,12 +173,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (email: string, password: string) => {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/register`, {
+    const response = await fetch(`${API_URL}/api/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ email, password }),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -119,15 +190,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return response.json();
   };
 
-  const logout = () => {
-    Cookies.remove('access_token');
-    setUser(null);
-    client.setConfig({
-      baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
-      headers: {},
-    });
-  };
-
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -135,7 +197,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading, 
       login, 
       register, 
-      logout 
+      logout,
+      checkTokenExpiry
     }}>
       {children}
     </AuthContext.Provider>
