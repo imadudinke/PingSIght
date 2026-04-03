@@ -11,6 +11,7 @@ import { BackgroundLayers } from "@/components/dashboard/BackgroundLayers";
 import { DashboardSidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/Header";
 import { DashboardFooter } from "@/components/dashboard/Footer";
+import { HeartbeatChart } from "@/components/dashboard/HeartbeatChart";
 
 type MonitorDetail = GetMonitorMonitorsMonitorIdGetResponses[200];
 
@@ -302,59 +303,12 @@ export default function MonitorDetailPage() {
                     <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]">
                       <div className="px-5 py-4 border-b border-[#15171a]">
                         <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
-                          RECENT_HEARTBEATS [{monitor.recent_heartbeats?.length ?? 0}]
+                          HEARTBEAT_ANALYSIS [{monitor.recent_heartbeats?.length ?? 0}]
                         </div>
                       </div>
 
-                      <div className="max-h-[400px] overflow-y-auto">
-                        {!monitor.recent_heartbeats ||
-                        monitor.recent_heartbeats.length === 0 ? (
-                          <div className="py-8 text-center text-[#6f6f6f] text-[11px] tracking-[0.26em] uppercase">
-                            NO_HEARTBEATS_RECORDED
-                          </div>
-                        ) : (
-                          <div className="divide-y divide-[#15171a]">
-                            {monitor.recent_heartbeats.map((hb: any) => (
-                              <div
-                                key={hb.id}
-                                className="px-5 py-3 hover:bg-[rgba(255,255,255,0.02)] transition"
-                              >
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <div className="flex items-center gap-4">
-                                    <span
-                                      className={cn(
-                                        "h-2 w-2 rounded-full",
-                                        hb.status_code >= 200 && hb.status_code < 300
-                                          ? "bg-[#f2d48a]"
-                                          : "bg-[#ff6a6a]"
-                                      )}
-                                    />
-                                    <span className="text-[#d6d7da] tracking-[0.18em]">
-                                      CODE: {hb.status_code}
-                                    </span>
-                                    <span className="text-[#6f6f6f] tracking-[0.18em]">
-                                      LATENCY: {hb.latency_ms}ms
-                                    </span>
-                                    {hb.is_anomaly && (
-                                      <span className="text-[#ff6a6a] tracking-[0.18em]">
-                                        ANOMALY
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[#5f636a] tracking-[0.18em]">
-                                    {formatDate(hb.created_at)}
-                                  </span>
-                                </div>
-
-                                {hb.error_message && (
-                                  <div className="mt-2 text-[#ff6a6a] text-[10px]">
-                                    {hb.error_message}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                      <div className="p-5">
+                        <HeartbeatChart heartbeats={monitor.recent_heartbeats || []} />
                       </div>
                     </div>
                   </div>
