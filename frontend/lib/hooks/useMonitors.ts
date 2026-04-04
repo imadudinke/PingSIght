@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import Cookies from 'js-cookie';
 
 interface Monitor {
   id: string;
@@ -46,18 +45,10 @@ export function useMonitors(autoRefresh = true, refreshInterval = 30000) {
 
   const fetchMonitors = async (page = 1, perPage = 100) => {
     try {
-      const token = Cookies.get('access_token');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/monitors/?page=${page}&per_page=${perPage}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: 'include', // Send httpOnly cookies
         }
       );
 

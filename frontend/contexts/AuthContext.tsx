@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { client } from '@/lib/api/client.gen';
-import { setAuthToken, getAuthToken, removeAuthToken, isTokenExpired } from '@/lib/utils/auth';
+import { logout as logoutUtil, checkAuth } from '@/lib/utils/auth';
 
 interface User {
   id: string;
@@ -18,7 +18,6 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  checkTokenExpiry: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,71 +30,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const logout = useCallback(() => {
-    removeAuthToken();
+    logoutUtil();
     setUser(null);
     client.setConfig({
       baseUrl: API_URL,
-      headers: {},
     });
-    router.push('/');
-  }, [router]);
-
-  const checkTokenExpiry = useCallback(() => {
-    if (isTokenExpired()) {
-      console.log('Token expired, logging out...');
-      logout();
-    }
-  }, [logout]);
+  }, []);
 
   const fetchCurrentUser = useCallback(async () => {
     try {
-      const token = getAuthToken();
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Check if token is expired before making request
-      if (isTokenExpired()) {
-        console.log('Token expired during fetch');
-        logout();
-        return;
-      }
-
       const response = await fetch(`${API_URL}/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: 'include',
+        credentials: 'include', // Send httpOnly cookie
       });
 
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
         
-        // Configure client with token
+        // Configure client to send cookies
         client.setConfig({
           baseUrl: API_URL,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         });
       } else if (response.status === 401) {
-        console.log('Unauthorized, logging out...');
-        logout();
+        console.log('Unauthorized');
+        setUser(null);
       } else {
         console.error('Failed to fetch user, status:', response.status);
-        removeAuthToken();
         setUser(null);
       }
     } catch (error) {
       console.error('Failed to fetch user:', error);
-      removeAuthToken();
       setUser(null);
     } finally {
       setIsLoading(false);
     }
-  }, [logout]);
+  }, []);
 
   useEffect(() => {
     // Configure client base URL
@@ -103,39 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       baseUrl: API_URL,
     });
 
-    // Check if user is already logged in
-    const token = getAuthToken();
-    if (token && !isTokenExpired()) {
-      fetchCurrentUser();
-    } else {
-      if (token) {
-        // Token exists but expired
-        removeAuthToken();
-      }
-      setIsLoading(false);
-    }
+    // Check if user is already logged in via cookie
+    fetchCurrentUser();
   }, [fetchCurrentUser]);
-
-  // Set up interval to check token expiry every minute
-  useEffect(() => {
-    const interval = setInterval(() => {
-      checkTokenExpiry();
-    }, 60000); // Check every minute
-
-    return () => clearInterval(interval);
-  }, [checkTokenExpiry]);
-
-  // Check token expiry on visibility change (when user returns to tab)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        checkTokenExpiry();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [checkTokenExpiry]);
 
   const login = async (username: string, password: string) => {
     const formData = new URLSearchParams();
@@ -148,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: formData,
-      credentials: 'include',
+      credentials: 'include', // Receive httpOnly cookie
     });
 
     if (!response.ok) {
@@ -156,19 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(error.detail || 'Login failed');
     }
 
-    const data = await response.json();
-    
-    // Store token with 24 hour expiry
-    setAuthToken(data.access_token, 1440);
-    
-    // Set auth header for all future requests
-    client.setConfig({
-      baseUrl: API_URL,
-      headers: {
-        Authorization: `Bearer ${data.access_token}`,
-      },
-    });
-
+    // Cookie is automatically set by backend
     await fetchCurrentUser();
   };
 
@@ -197,8 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading, 
       login, 
       register, 
-      logout,
-      checkTokenExpiry
+      logout
     }}>
       {children}
     </AuthContext.Provider>

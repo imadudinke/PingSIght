@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Cookie, Request
 from fastapi.security import APIKeyHeader
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +17,7 @@ settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Use APIKeyHeader instead of OAuth2PasswordBearer for better Swagger UX
-api_key_header = APIKeyHeader(name="Authorization", description="Enter: Bearer <your_jwt_token>")
+api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
 
 def hash_password(password: str) -> str:
@@ -38,7 +38,8 @@ def create_access_token(data: dict) -> tuple[str, datetime]:
 
 
 async def get_current_user(
-    authorization: str = Depends(api_key_header),
+    authorization: Optional[str] = Depends(api_key_header),
+    access_token: Optional[str] = Cookie(None),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     credentials_exception = HTTPException(
@@ -47,15 +48,17 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    # Extract token from "Bearer <token>" format
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header format. Use: Bearer <token>",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    token = None
     
-    token = authorization.replace("Bearer ", "")
+    # Try to get token from Authorization header first
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+    # Fall back to cookie
+    elif access_token:
+        token = access_token
+    
+    if not token:
+        raise credentials_exception
     
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
