@@ -3,7 +3,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { client } from '@/lib/api/client.gen';
-import { logout as logoutUtil, checkAuth } from '@/lib/utils/auth';
+import { logout as logoutUtil } from '@/lib/utils/auth';
+import { getCurrentUserInfoAuthMeGet } from '@/lib/api/sdk.gen';
 
 interface User {
   id: string;
@@ -39,23 +40,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchCurrentUser = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/auth/me`, {
-        credentials: 'include', // Send httpOnly cookie
-      });
+      const response = await getCurrentUserInfoAuthMeGet();
 
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-        
-        // Configure client to send cookies
-        client.setConfig({
-          baseUrl: API_URL,
-        });
-      } else if (response.status === 401) {
+      if (response.response.ok && response.data) {
+        setUser(response.data as User);
+      } else if (response.response.status === 401) {
         console.log('Unauthorized');
         setUser(null);
       } else {
-        console.error('Failed to fetch user, status:', response.status);
+        console.error('Failed to fetch user, status:', response.response.status);
         setUser(null);
       }
     } catch (error) {

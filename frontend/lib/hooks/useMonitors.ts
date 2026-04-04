@@ -1,61 +1,24 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-
-interface Monitor {
-  id: string;
-  user_id: string;
-  url: string;
-  friendly_name: string;
-  interval_seconds: number;
-  status: string;
-  is_active: boolean;
-  is_maintenance: boolean;
-  last_checked: string | null;
-  created_at: string;
-  monitor_type: 'simple' | 'scenario' | 'heartbeat';
-  steps: Array<{
-    url: string;
-    name: string;
-    order: number;
-  }> | null;
-  ssl_status: string | null;
-  ssl_expiry_date: string | null;
-  ssl_days_remaining: number | null;
-  domain_status: string | null;
-  domain_expiry_date: string | null;
-  domain_days_remaining: number | null;
-  domain_last_checked: string | null;
-  last_ping_received: string | null;
-  heartbeat_url: string | null;
-}
-
-interface MonitorsResponse {
-  monitors: Monitor[];
-  total: number;
-  page: number;
-  per_page: number;
-}
+import { listMonitorsMonitorsGet } from '@/lib/api/sdk.gen';
+import type { MonitorResponse } from '@/lib/api/types.gen';
 
 export function useMonitors(autoRefresh = true, refreshInterval = 30000) {
-  const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [monitors, setMonitors] = useState<MonitorResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
 
   const fetchMonitors = async (page = 1, perPage = 100) => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/monitors/?page=${page}&per_page=${perPage}`,
-        {
-          credentials: 'include', // Send httpOnly cookies
-        }
-      );
+      const response = await listMonitorsMonitorsGet({
+        query: { page, per_page: perPage }
+      });
 
-      if (response.ok) {
-        const data: MonitorsResponse = await response.json();
-        setMonitors(data.monitors);
-        setTotal(data.total);
+      if (response.response.ok && response.data) {
+        setMonitors(response.data.monitors);
+        setTotal(response.data.total);
         setError(null);
       } else {
         setError('Failed to fetch monitors');
