@@ -15,6 +15,10 @@ import { MonitorRow } from "@/components/dashboard/MonitorRow";
 import { LogRow } from "@/components/dashboard/LogRow";
 import { Pagination } from "@/components/dashboard/Pagination";
 import { CreateMonitorModal } from "@/components/monitors/CreateMonitorModal";
+import { EditMonitorModal } from "@/components/monitors/EditMonitorModal";
+import { DeleteConfirmModal } from "@/components/monitors/DeleteConfirmModal";
+import { MonitorActionsMenu } from "@/components/monitors/MonitorActionsMenu";
+import type { MonitorResponse } from "@/lib/api/types.gen";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -22,6 +26,9 @@ export default function Dashboard() {
   const { monitors, loading: loadingMonitors, refetch } = useMonitors();
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedMonitor, setSelectedMonitor] = useState<MonitorResponse | null>(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -137,11 +144,30 @@ export default function Dashboard() {
                   <>
                     <div className="divide-y divide-[#15171a]">
                       {paginatedMonitors.map((m: any) => (
-                        <MonitorRow 
-                          key={m.id} 
-                          monitor={m}
-                          onClick={() => router.push(`/dashboard/monitors/${m.id}`)}
-                        />
+                        <div key={m.id} className="relative">
+                          <div className="flex items-center">
+                            <div 
+                              className="flex-1 cursor-pointer"
+                              onClick={() => router.push(`/dashboard/monitors/${m.id}`)}
+                            >
+                              <MonitorRow monitor={m} onClick={() => {}} />
+                            </div>
+                            <div className="px-6">
+                              <MonitorActionsMenu
+                                monitor={m}
+                                onEdit={() => {
+                                  setSelectedMonitor(m);
+                                  setIsEditModalOpen(true);
+                                }}
+                                onDelete={() => {
+                                  setSelectedMonitor(m);
+                                  setIsDeleteModalOpen(true);
+                                }}
+                                onMaintenanceToggle={() => refetch()}
+                              />
+                            </div>
+                          </div>
+                        </div>
                       ))}
                     </div>
                     <Pagination
@@ -215,6 +241,32 @@ export default function Dashboard() {
       <CreateMonitorModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={() => {
+          refetch();
+        }}
+      />
+
+      {/* Edit Monitor Modal */}
+      <EditMonitorModal
+        isOpen={isEditModalOpen}
+        monitor={selectedMonitor}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedMonitor(null);
+        }}
+        onSuccess={() => {
+          refetch();
+        }}
+      />
+
+      {/* Delete Confirm Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        monitor={selectedMonitor}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setSelectedMonitor(null);
+        }}
         onSuccess={() => {
           refetch();
         }}

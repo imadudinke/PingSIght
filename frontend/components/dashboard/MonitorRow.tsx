@@ -19,16 +19,8 @@ export function MonitorRow({ monitor, onClick }: { monitor: any; onClick: () => 
       ? "IO_LATENCY"
       : "HEARTBEAT";
 
-  const handleMenuClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // Handle menu action here
-  };
-
   return (
-    <div 
-      className="relative cursor-cell hover:bg-[rgba(255,255,255,0.02)] transition-colors"
-      onClick={onClick}
-    >
+    <div className="relative hover:bg-[rgba(255,255,255,0.02)] transition-colors">
       <div className={cn("absolute left-0 top-0 bottom-0 w-[3px]", leftStrip)} />
       <div className="px-6 py-5">
         <div className="grid grid-cols-[420px_1fr_180px] items-center gap-6">
@@ -43,6 +35,11 @@ export function MonitorRow({ monitor, onClick }: { monitor: any; onClick: () => 
               <div className="h-[18px] px-2 border border-[#2a2d31] bg-[rgba(255,255,255,0.03)] text-[10px] tracking-[0.18em] uppercase text-[#a9acb2] flex items-center">
                 {badgeText}
               </div>
+              {monitor.is_maintenance && (
+                <div className="h-[18px] px-2 border border-[#f2d48a]/30 bg-[#f2d48a]/10 text-[10px] tracking-[0.18em] uppercase text-[#f2d48a] flex items-center">
+                  MAINTENANCE
+                </div>
+              )}
             </div>
             <div className="mt-2 text-[#6f6f6f] text-[11px] tracking-[0.10em]">
               {monitor.url}
@@ -85,17 +82,6 @@ export function MonitorRow({ monitor, onClick }: { monitor: any; onClick: () => 
           {/* Right block */}
           <div className="justify-self-end flex items-center gap-5">
             <StatusPill status={status} />
-            <button
-              className={cn(
-                "h-10 w-10 grid place-items-center",
-                "border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]",
-                "text-[#a9acb2] hover:text-[#d6d7da] hover:border-[#3a3d42] transition"
-              )}
-              onClick={handleMenuClick}
-              aria-label="Open monitor menu"
-            >
-              <span className="text-[18px] leading-none">⋮</span>
-            </button>
           </div>
         </div>
       </div>
