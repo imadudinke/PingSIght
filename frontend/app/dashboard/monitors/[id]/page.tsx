@@ -230,6 +230,8 @@ export default function MonitorDetailPage() {
   const [monitor, setMonitor] = useState<MonitorDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // UI-only range selector (NO API changes)
   const [range, setRange] = useState<RangeKey>("TODAY");
@@ -242,15 +244,19 @@ export default function MonitorDetailPage() {
     if (!isLoading && !isAuthenticated) router.push("/");
   }, [isAuthenticated, isLoading, router]);
 
-  useEffect(() => {
-    const fetchMonitorDetails = async () => {
+  // Fetch monitor details function (reusable)
+  const fetchMonitorDetails = useMemo(
+    () => async (isBackgroundRefresh = false) => {
       if (!monitorId) return;
 
       try {
-        setLoading(true);
+        if (!isBackgroundRefresh) {
+          setLoading(true);
+        } else {
+          setIsRefreshing(true);
+        }
         setError(null);
 
-        // IMPORTANT: keep API call exactly as your backend accepts
         const response = await getMonitorMonitorsMonitorIdGet({
           path: { monitor_id: monitorId },
           query: { include_heartbeats: 50 },
@@ -266,16 +272,70 @@ export default function MonitorDetailPage() {
         }
 
         setMonitor(response.data);
+        setLastUpdated(new Date());
       } catch (err) {
-        setMonitor(null);
+        if (!isBackgroundRefresh) {
+          setMonitor(null);
+        }
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
-        setLoading(false);
+        if (!isBackgroundRefresh) {
+          setLoading(false);
+        } else {
+          setIsRefreshing(false);
+        }
+      }
+    },
+    [monitorId, logout, router]
+  );
+
+  // Initial fetch
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      fetchMonitorDetails(false);
+    }
+  }, [isAuthenticated, isLoading, fetchMonitorDetails]);
+
+  // Auto-refresh with smart intervals
+  useEffect(() => {
+    if (!isAuthenticated || !monitorId || loading) return;
+
+    // Determine refresh interval based on monitor check interval
+    const getRefreshInterval = () => {
+      if (!monitor) return 30000; // Default 30s
+      
+      const checkInterval = monitor.interval_seconds || 60;
+      
+      // Refresh more frequently than check interval, but not too aggressive
+      if (checkInterval <= 60) return 15000; // 15s for fast monitors
+      if (checkInterval <= 300) return 30000; // 30s for medium monitors
+      return 60000; // 60s for slow monitors
+    };
+
+    const refreshInterval = getRefreshInterval();
+
+    const intervalId = setInterval(() => {
+      // Only refresh if page is visible (battery/performance optimization)
+      if (document.visibilityState === 'visible') {
+        fetchMonitorDetails(true);
+      }
+    }, refreshInterval);
+
+    // Cleanup on unmount
+    return () => clearInterval(intervalId);
+  }, [isAuthenticated, monitorId, loading, monitor, fetchMonitorDetails]);
+
+  // Refresh when page becomes visible again (user returns to tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && monitor && !loading) {
+        fetchMonitorDetails(true);
       }
     };
 
-    if (isAuthenticated && !isLoading) fetchMonitorDetails();
-  }, [monitorId, isAuthenticated, isLoading, logout, router]);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [monitor, loading, fetchMonitorDetails]);
 
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return "N/A";
@@ -333,10 +393,32 @@ export default function MonitorDetailPage() {
             <Panel className="p-0">
               <div className="px-6 py-5 border-b border-[#15171a]">
                 <div className="flex items-start justify-between gap-8">
-                  <div>
-                    <div className="text-[#d6d7da] text-[14px] tracking-[0.18em] uppercase">
-                      MONITOR_DETAILS
+                  <div className="flex-1">
+                    <div className="flex items-center gap-4">
+                      <div className="text-[#d6d7da] text-[14px] tracking-[0.18em] uppercase">
+                        MONITOR_DETAILS
+                      </div>
+                      
+                      {/* Auto-refresh indicator */}
+                      {isRefreshing && (
+                        <div className="flex items-center gap-2 text-[#f2d48a] text-[10px] tracking-[0.26em] uppercase">
+                          <div className="w-2 h-2 rounded-full bg-[#f2d48a] animate-pulse"></div>
+                          <span>UPDATING...</span>
+                        </div>
+                      )}
+                      
+                      {/* Last updated timestamp */}
+                      {lastUpdated && !isRefreshing && (
+                        <div className="text-[#5f636a] text-[10px] tracking-[0.22em] uppercase">
+                          UPDATED: {lastUpdated.toLocaleTimeString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            second: '2-digit'
+                          })}
+                        </div>
+                      )}
                     </div>
+                    
                     {monitor && (
                       <div className="mt-1 text-[#6f6f6f] text-[11px] tracking-[0.10em]">
                         {monitor.friendly_name}
@@ -344,8 +426,27 @@ export default function MonitorDetailPage() {
                     )}
                   </div>
 
-                  {/* UI-only range selector */}
-                  <RangeTabs value={range} onChange={setRange} />
+                  <div className="flex items-center gap-4">
+                    {/* Manual refresh button */}
+                    <button
+                      onClick={() => fetchMonitorDetails(true)}
+                      disabled={isRefreshing}
+                      className={cn(
+                        "h-8 px-3 flex items-center gap-2",
+                        "border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]",
+                        "text-[10px] tracking-[0.26em] uppercase transition",
+                        isRefreshing 
+                          ? "text-[#5f636a] cursor-not-allowed opacity-50"
+                          : "text-[#a9acb2] hover:text-[#d6d7da] hover:border-[#3a3d42]"
+                      )}
+                    >
+                      <span className={cn(isRefreshing && "animate-spin")}>↻</span>
+                      <span>REFRESH</span>
+                    </button>
+                    
+                    {/* UI-only range selector */}
+                    <RangeTabs value={range} onChange={setRange} />
+                  </div>
                 </div>
               </div>
 

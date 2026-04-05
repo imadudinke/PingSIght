@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMonitors } from "@/lib/hooks/useMonitors";
+import { cn } from "@/lib/utils/ui";
 import { BackgroundLayers } from "@/components/dashboard/BackgroundLayers";
 import { DashboardSidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/Header";
@@ -23,7 +24,7 @@ import type { MonitorResponse } from "@/lib/api/types.gen";
 export default function Dashboard() {
   const router = useRouter();
   const { isAuthenticated, isLoading, user } = useAuth();
-  const { monitors, loading: loadingMonitors, refetch } = useMonitors();
+  const { monitors, loading: loadingMonitors, isRefreshing, lastUpdated, refetch } = useMonitors();
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -115,10 +116,48 @@ export default function Dashboard() {
             {/* ACTIVE MONITORS */}
             <section className="mt-8">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-[#d6d7da] text-[14px] tracking-[0.18em] uppercase">
-                  ACTIVE_MONITORS [N:{totalMonitors}]
+                <div className="flex items-center gap-4">
+                  <div className="text-[#d6d7da] text-[14px] tracking-[0.18em] uppercase">
+                    ACTIVE_MONITORS [N:{totalMonitors}]
+                  </div>
+                  
+                  {/* Auto-refresh indicator */}
+                  {isRefreshing && (
+                    <div className="flex items-center gap-2 text-[#f2d48a] text-[10px] tracking-[0.26em] uppercase">
+                      <div className="w-2 h-2 rounded-full bg-[#f2d48a] animate-pulse"></div>
+                      <span>UPDATING...</span>
+                    </div>
+                  )}
+                  
+                  {/* Last updated timestamp */}
+                  {lastUpdated && !isRefreshing && (
+                    <div className="text-[#5f636a] text-[10px] tracking-[0.22em] uppercase">
+                      UPDATED: {lastUpdated.toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        second: '2-digit'
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-6">
+                  {/* Manual refresh button */}
+                  <button
+                    onClick={() => refetch()}
+                    disabled={isRefreshing}
+                    className={cn(
+                      "h-8 px-3 flex items-center gap-2",
+                      "border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]",
+                      "text-[10px] tracking-[0.26em] uppercase transition",
+                      isRefreshing 
+                        ? "text-[#5f636a] cursor-not-allowed opacity-50"
+                        : "text-[#a9acb2] hover:text-[#d6d7da] hover:border-[#3a3d42]"
+                    )}
+                  >
+                    <span className={cn(isRefreshing && "animate-spin")}>↻</span>
+                    <span>REFRESH</span>
+                  </button>
+                  
                   <button
                     onClick={() => setIsCreateModalOpen(true)}
                     className="bg-[#f2d48a] text-[#0b0c0e] font-mono text-[10px] font-bold tracking-[0.26em] uppercase px-4 py-2 hover:bg-[#d6d7da] transition-all"

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getCurrentUserInfoAuthMeGet } from "@/lib/api/sdk.gen";
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -12,14 +13,9 @@ export default function AuthCallback() {
     // We just need to verify it works and redirect
     const verifyAuth = async () => {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/auth/me`,
-          { 
-            credentials: "include" // Important: send cookies
-          }
-        );
+        const response = await getCurrentUserInfoAuthMeGet();
 
-        if (res.ok) {
+        if (response.response.ok) {
           setStatus("Success! Redirecting...");
           router.push("/dashboard");
         } else {
