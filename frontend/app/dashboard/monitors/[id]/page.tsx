@@ -12,7 +12,7 @@ import { DashboardSidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/Header";
 import { DashboardFooter } from "@/components/dashboard/Footer";
 import { HeartbeatChart } from "@/components/dashboard/HeartbeatChart";
-import { getDeepTrace, getSSLIssuer, getSSLCommonName } from "@/lib/utils/monitor";
+import { getDeepTrace, getSSLIssuer, getSSLCommonName, calculateP95Latency, calculateP99Latency, calculateDowntimeDuration } from "@/lib/utils/monitor";
 
 type MonitorDetail = GetMonitorMonitorsMonitorIdGetResponses[200];
 
@@ -359,11 +359,18 @@ export default function MonitorDetailPage() {
                     ERROR: {error}
                   </div>
                 ) : monitor ? (
+                  (() => {
+                    // Compute incidents from heartbeats (failures only)
+                    const incidents = (monitor.recent_heartbeats || [])
+                      .filter((hb: any) => hb.status_code >= 400 || hb.error_message)
+                      .slice(0, 20); // Show last 20 incidents
+                    
+                    return (
                   <div className="space-y-6">
                     <DeepTraceWaterfall monitor={monitor as any} />
 
                     {/* Stats */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       <MetricCard
                         label="UPTIME"
                         value={`${monitor.uptime_percentage?.toFixed(2) ?? "0.00"}%`}
@@ -372,6 +379,16 @@ export default function MonitorDetailPage() {
                       <MetricCard
                         label="AVG_LATENCY"
                         value={`${monitor.average_latency ?? 0}ms`}
+                        tone="white"
+                      />
+                      <MetricCard
+                        label="P95_LATENCY"
+                        value={`${calculateP95Latency(monitor.recent_heartbeats || [])}ms`}
+                        tone="white"
+                      />
+                      <MetricCard
+                        label="P99_LATENCY"
+                        value={`${calculateP99Latency(monitor.recent_heartbeats || [])}ms`}
                         tone="white"
                       />
                       <MetricCard
@@ -491,7 +508,7 @@ export default function MonitorDetailPage() {
                                 ERROR_CODE
                               </th>
                               <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
-                                DURATION
+                                DOWNTIME
                               </th>
                               <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
                                 MESSAGE
@@ -532,7 +549,35 @@ export default function MonitorDetailPage() {
                                     </span>
                                   </td>
                                   <td className="px-5 py-3 text-[#d6d7da] text-[11px] font-mono">
-                                    {incident.latency_ms}ms
+                                    {(() => {
+                                      // Calculate downtime duration
+                                      // Find next successful heartbeat after this incident
+                                      const allHeartbeats = monitor.recent_heartbeats || [];
+                                      const currentIndex = allHeartbeats.findIndex((hb: any) => hb.id === incident.id);
+                                      
+                                      if (currentIndex === -1) return "< 1min";
+                                      
+                                      // Look for next successful check (status < 400)
+                                      const nextSuccess = allHeartbeats
+                                        .slice(currentIndex + 1)
+                                        .find((hb: any) => hb.status_code < 400);
+                                      
+                                      if (nextSuccess) {
+                                        const startTime = new Date(incident.created_at).getTime();
+                                        const endTime = new Date(nextSuccess.created_at).getTime();
+                                        const durationMs = endTime - startTime;
+                                        
+                                        const seconds = Math.floor(durationMs / 1000);
+                                        const minutes = Math.floor(seconds / 60);
+                                        const hours = Math.floor(minutes / 60);
+                                        
+                                        if (hours > 0) return `${hours}h ${minutes % 60}m`;
+                                        if (minutes > 0) return `${minutes}m`;
+                                        return `${seconds}s`;
+                                      }
+                                      
+                                      return "< 1min";
+                                    })()}
                                   </td>
                                   <td className="px-5 py-3 text-[#6f6f6f] text-[11px] max-w-xs truncate">
                                     {incident.error_message || "Request failed"}
@@ -605,6 +650,8 @@ export default function MonitorDetailPage() {
                       </div>
                     </div>
                   </div>
+                  );
+                  })()
                 ) : null}
               </div>
             </Panel>

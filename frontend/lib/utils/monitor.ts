@@ -124,3 +124,72 @@ export function getSSLCommonName(monitor: any): string {
     return monitor.url;
   }
 }
+
+/**
+ * Calculate p95 latency from heartbeats
+ */
+export function calculateP95Latency(heartbeats: any[]): number {
+  if (!heartbeats || heartbeats.length === 0) return 0;
+  
+  const latencies = heartbeats
+    .map(hb => hb.latency_ms)
+    .filter(l => l != null && l > 0)
+    .sort((a, b) => a - b);
+  
+  if (latencies.length === 0) return 0;
+  
+  const index = Math.ceil(latencies.length * 0.95) - 1;
+  return Math.round(latencies[index] || 0);
+}
+
+/**
+ * Calculate p99 latency from heartbeats
+ */
+export function calculateP99Latency(heartbeats: any[]): number {
+  if (!heartbeats || heartbeats.length === 0) return 0;
+  
+  const latencies = heartbeats
+    .map(hb => hb.latency_ms)
+    .filter(l => l != null && l > 0)
+    .sort((a, b) => a - b);
+  
+  if (latencies.length === 0) return 0;
+  
+  const index = Math.ceil(latencies.length * 0.99) - 1;
+  return Math.round(latencies[index] || 0);
+}
+
+/**
+ * Calculate downtime duration between incidents
+ */
+export function calculateDowntimeDuration(incident: any, nextIncident?: any): string {
+  if (!incident.created_at) return "Unknown";
+  
+  const startTime = new Date(incident.created_at).getTime();
+  
+  // If we have a next incident (recovery), calculate duration
+  if (nextIncident && nextIncident.created_at) {
+    const endTime = new Date(nextIncident.created_at).getTime();
+    const durationMs = endTime - startTime;
+    
+    return formatDuration(durationMs);
+  }
+  
+  // If no recovery time, show as ongoing or single check
+  return "< 1min";
+}
+
+/**
+ * Format duration in human-readable format
+ */
+export function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) return `${days}d ${hours % 24}h`;
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+  return `${seconds}s`;
+}
