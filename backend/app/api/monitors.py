@@ -19,17 +19,22 @@ from app.schemas.monitor import (
     MonitorList
 )
 from app.core.security import get_current_user
+from app.core.config import get_settings
 from app.services.monitor_service import MonitorService
 from app.worker.scheduler import monitor_scheduler
 
 router = APIRouter(prefix="/monitors", tags=["monitors"])
 
+# Get settings for backend URL
+settings = get_settings()
+
 
 def _heartbeat_url_for_monitor(monitor: Monitor) -> Optional[str]:
-    """Build the ingestion URL path for heartbeat monitors."""
+    """Build the full ingestion URL for heartbeat monitors."""
     if monitor.monitor_type != "heartbeat":
         return None
-    return f"/api/heartbeats/{monitor.id}"
+    # Return full URL with backend_url from settings
+    return f"{settings.backend_url}/api/heartbeats/{monitor.id}"
 
 
 @router.post("/", response_model=MonitorResponse)

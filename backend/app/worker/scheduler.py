@@ -14,6 +14,7 @@ from app.db.session import AsyncSessionLocal
 from app.models.monitor import Monitor
 from app.worker.domain_checker import get_domain_expiry, should_check_domain
 from app.worker.engine import perform_check, get_active_monitors
+from app.worker.heartbeat_watcher import check_heartbeat_monitors
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -63,6 +64,17 @@ class MonitorScheduler:
                 replace_existing=True
             )
 
+            # Schedule the heartbeat watcher to run every 60 seconds
+            # This checks for missed heartbeats and marks monitors as DOWN
+            self.scheduler.add_job(
+                func=self.check_heartbeat_monitors,
+                trigger=IntervalTrigger(seconds=60),
+                id='heartbeat_watcher',
+                name='Heartbeat Monitor Watcher',
+                replace_existing=True,
+                next_run_time=datetime.now(timezone.utc)  # Run immediately on startup
+            )
+
             # Schedule the domain expiration check to run every 24 hours.
             # next_run_time=now ensures the first run fires immediately on startup
             # so new monitors are checked right away instead of waiting 24h.
@@ -76,6 +88,7 @@ class MonitorScheduler:
             )
 
             logger.info("Monitor refresh job scheduled (every 1 minute)")
+            logger.info("Heartbeat watcher job scheduled (every 60 seconds)")
             logger.info("Domain expiration check job scheduled (every 24 hours)")
             
         except Exception as e:
@@ -97,10 +110,6 @@ class MonitorScheduler:
         """
         try:
             logger.debug("Refreshing monitor schedules...")
-
-            # Keep reverse-ping monitor statuses up to date even though
-            # they are not actively checked by the scheduler.
-            await self.refresh_heartbeat_monitor_statuses()
             
             async with AsyncSessionLocal() as db:
                 active_monitors = await get_active_monitors(db)
@@ -132,32 +141,33 @@ class MonitorScheduler:
 
     async def refresh_heartbeat_monitor_statuses(self):
         """Mark heartbeat monitors UP/DOWN based on last received ping."""
-        now = datetime.now(timezone.utc)
+        # This method is now deprecated in favor of the dedicated heartbeat_watcher
+        # Keeping it for backward compatibility but it does nothing
+        # The heartbeat_watcher.check_heartbeat_monitors() handles this now
+        pass
+    
+    async def check_heartbeat_monitors(self):
+        """
+        Check all heartbeat monitors for missed pings.
+        This is the "Silence is the Alarm" watcher.
+        Runs every 60 seconds.
+        """
         try:
+            logger.info("[SCHEDULER] Running heartbeat monitor watcher...")
             async with AsyncSessionLocal() as db:
-                result = await db.execute(
-                    select(Monitor).where(
-                        Monitor.is_active == True,
-                        Monitor.is_maintenance == False,
-                        Monitor.monitor_type == "heartbeat",
-                    )
+                stats = await check_heartbeat_monitors(db)
+            
+            if stats.get("marked_down", 0) > 0:
+                logger.warning(
+                    f"[SCHEDULER] Heartbeat watcher marked {stats['marked_down']} monitors as DOWN"
                 )
-                monitors = result.scalars().all()
-
-                for monitor in monitors:
-                    new_status = "PENDING"
-                    if monitor.last_ping_received is not None:
-                        deadline = monitor.last_ping_received + timedelta(
-                            seconds=monitor.interval_seconds
-                        )
-                        new_status = "UP" if now <= deadline else "DOWN"
-
-                    if monitor.last_status != new_status:
-                        monitor.last_status = new_status
-
-                await db.commit()
+            else:
+                logger.debug(
+                    f"[SCHEDULER] Heartbeat watcher completed - all monitors healthy"
+                )
+                
         except Exception as e:
-            logger.error(f"Failed to refresh heartbeat monitor statuses: {str(e)}")
+            logger.error(f"[SCHEDULER] Error in heartbeat watcher: {str(e)}", exc_info=True)
     
     async def schedule_monitor(self, monitor):
         """

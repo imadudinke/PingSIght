@@ -16,14 +16,16 @@ interface Heartbeat {
 
 interface HeartbeatChartProps {
   heartbeats: Heartbeat[];
+  monitorType?: string; // 'heartbeat' or 'simple'/'scenario'
 }
 
-export function HeartbeatChart({ heartbeats }: HeartbeatChartProps) {
+export function HeartbeatChart({ heartbeats, monitorType = "simple" }: HeartbeatChartProps) {
   const [timeRange, setTimeRange] = useState<"all" | "24h" | "7d">("all");
+  const isHeartbeatMonitor = monitorType === "heartbeat";
 
   const { chartData, stats } = useMemo(() => {
     if (!heartbeats || heartbeats.length === 0) {
-      return { chartData: [], stats: { successCount: 0, errorCount: 0, anomalyCount: 0, avgLatency: 0 } };
+      return { chartData: [], stats: { successCount: 0, errorCount: 0, anomalyCount: 0, avgLatency: 0, missedCount: 0 } };
     }
 
     // Sort by date (oldest first for chart)
@@ -43,29 +45,60 @@ export function HeartbeatChart({ heartbeats }: HeartbeatChartProps) {
     });
 
     // Transform data for chart
-    const data = filtered.map((hb) => ({
-      timestamp: new Date(hb.created_at).getTime(),
-      date: hb.created_at,
-      latency: hb.latency_ms,
-      success: hb.status_code >= 200 && hb.status_code < 300 ? hb.latency_ms : 0,
-      error: hb.status_code >= 400 ? hb.latency_ms : 0,
-      anomaly: hb.is_anomaly ? hb.latency_ms : 0,
-      status_code: hb.status_code,
-      is_anomaly: hb.is_anomaly,
-      error_message: hb.error_message,
-    }));
+    const data = filtered.map((hb) => {
+      if (isHeartbeatMonitor) {
+        // For heartbeat monitors: show ping success (1) or missed (0)
+        // status_code=200 means ping received, status_code=0 means missed
+        const isPingReceived = hb.status_code === 200;
+        const isMissed = hb.status_code === 0;
+        
+        return {
+          timestamp: new Date(hb.created_at).getTime(),
+          date: hb.created_at,
+          latency: 0, // Not applicable for heartbeat monitors
+          success: isPingReceived ? 1 : 0,
+          error: isMissed ? 1 : 0,
+          anomaly: 0,
+          status_code: hb.status_code,
+          is_anomaly: false,
+          error_message: hb.error_message,
+          isPingReceived,
+          isMissed,
+        };
+      } else {
+        // For regular monitors: show latency
+        return {
+          timestamp: new Date(hb.created_at).getTime(),
+          date: hb.created_at,
+          latency: hb.latency_ms,
+          success: hb.status_code >= 200 && hb.status_code < 300 ? hb.latency_ms : 0,
+          error: hb.status_code >= 400 ? hb.latency_ms : 0,
+          anomaly: hb.is_anomaly ? hb.latency_ms : 0,
+          status_code: hb.status_code,
+          is_anomaly: hb.is_anomaly,
+          error_message: hb.error_message,
+          isPingReceived: false,
+          isMissed: false,
+        };
+      }
+    });
 
     // Calculate stats
-    const successCount = filtered.filter((hb) => hb.status_code >= 200 && hb.status_code < 300).length;
-    const errorCount = filtered.filter((hb) => hb.status_code >= 400).length;
-    const anomalyCount = filtered.filter((hb) => hb.is_anomaly).length;
-    const avgLatency = filtered.reduce((sum, hb) => sum + hb.latency_ms, 0) / filtered.length;
+    const successCount = filtered.filter((hb) => 
+      isHeartbeatMonitor ? hb.status_code === 200 : (hb.status_code >= 200 && hb.status_code < 300)
+    ).length;
+    const errorCount = filtered.filter((hb) => 
+      isHeartbeatMonitor ? hb.status_code === 0 : hb.status_code >= 400
+    ).length;
+    const anomalyCount = isHeartbeatMonitor ? 0 : filtered.filter((hb) => hb.is_anomaly).length;
+    const avgLatency = isHeartbeatMonitor ? 0 : (filtered.reduce((sum, hb) => sum + hb.latency_ms, 0) / filtered.length);
+    const missedCount = isHeartbeatMonitor ? errorCount : 0;
 
     return {
       chartData: data,
-      stats: { successCount, errorCount, anomalyCount, avgLatency },
+      stats: { successCount, errorCount, anomalyCount, avgLatency, missedCount },
     };
-  }, [heartbeats, timeRange]);
+  }, [heartbeats, timeRange, isHeartbeatMonitor]);
 
   if (!heartbeats || heartbeats.length === 0) {
     return (
@@ -95,29 +128,52 @@ export function HeartbeatChart({ heartbeats }: HeartbeatChartProps) {
     if (!active || !payload || !payload.length) return null;
 
     const data = payload[0].payload;
-    return (
-      <div className="bg-[#1a1d21] border border-[#2a2d31] px-4 py-3 rounded">
-        <div className="text-[#d6d7da] text-[11px] tracking-[0.18em] mb-2">
-          {formatDate(data.timestamp)} {formatTime(data.timestamp)}
-        </div>
-        <div className="space-y-1">
-          <div className="text-[#6f6f6f] text-[10px] tracking-[0.18em]">
-            LATENCY: <span className="text-[#f2d48a]">{data.latency}ms</span>
+    
+    if (isHeartbeatMonitor) {
+      // Tooltip for heartbeat monitors
+      return (
+        <div className="bg-[#1a1d21] border border-[#2a2d31] px-4 py-3 rounded">
+          <div className="text-[#d6d7da] text-[11px] tracking-[0.18em] mb-2">
+            {formatDate(data.timestamp)} {formatTime(data.timestamp)}
           </div>
-          <div className="text-[#6f6f6f] text-[10px] tracking-[0.18em]">
-            STATUS: <span className={data.status_code >= 400 ? "text-[#ff6a6a]" : "text-[#f2d48a]"}>
-              {data.status_code}
-            </span>
+          <div className="space-y-1">
+            <div className="text-[#6f6f6f] text-[10px] tracking-[0.18em]">
+              STATUS: <span className={data.isPingReceived ? "text-[#f2d48a]" : "text-[#ff6a6a]"}>
+                {data.isPingReceived ? "PING_RECEIVED" : "MISSED"}
+              </span>
+            </div>
+            {data.error_message && (
+              <div className="text-[#ff6a6a] text-[9px] mt-2 max-w-[200px]">{data.error_message}</div>
+            )}
           </div>
-          {data.is_anomaly && (
-            <div className="text-[#ff9500] text-[10px] tracking-[0.18em]">ANOMALY_DETECTED</div>
-          )}
-          {data.error_message && (
-            <div className="text-[#ff6a6a] text-[9px] mt-2 max-w-[200px]">{data.error_message}</div>
-          )}
         </div>
-      </div>
-    );
+      );
+    } else {
+      // Tooltip for regular monitors
+      return (
+        <div className="bg-[#1a1d21] border border-[#2a2d31] px-4 py-3 rounded">
+          <div className="text-[#d6d7da] text-[11px] tracking-[0.18em] mb-2">
+            {formatDate(data.timestamp)} {formatTime(data.timestamp)}
+          </div>
+          <div className="space-y-1">
+            <div className="text-[#6f6f6f] text-[10px] tracking-[0.18em]">
+              LATENCY: <span className="text-[#f2d48a]">{data.latency}ms</span>
+            </div>
+            <div className="text-[#6f6f6f] text-[10px] tracking-[0.18em]">
+              STATUS: <span className={data.status_code >= 400 ? "text-[#ff6a6a]" : "text-[#f2d48a]"}>
+                {data.status_code}
+              </span>
+            </div>
+            {data.is_anomaly && (
+              <div className="text-[#ff9500] text-[10px] tracking-[0.18em]">ANOMALY_DETECTED</div>
+            )}
+            {data.error_message && (
+              <div className="text-[#ff6a6a] text-[9px] mt-2 max-w-[200px]">{data.error_message}</div>
+            )}
+          </div>
+        </div>
+      );
+    }
   };
 
   return (
@@ -125,7 +181,7 @@ export function HeartbeatChart({ heartbeats }: HeartbeatChartProps) {
       {/* Header with Time Range Selector */}
       <div className="flex items-center justify-between">
         <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
-          LATENCY_TIMELINE
+          {isHeartbeatMonitor ? "PING_TIMELINE" : "LATENCY_TIMELINE"}
         </div>
         <div className="flex items-center gap-2">
           {(["all", "24h", "7d"] as const).map((range) => (
@@ -147,39 +203,60 @@ export function HeartbeatChart({ heartbeats }: HeartbeatChartProps) {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
-          <div className="text-[#5f636a] text-[9px] tracking-[0.26em] uppercase mb-1">SUCCESS</div>
-          <div className="text-[#f2d48a] text-[20px] font-semibold">{stats.successCount}</div>
+      {isHeartbeatMonitor ? (
+        // Stats for heartbeat monitors
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
+            <div className="text-[#5f636a] text-[9px] tracking-[0.26em] uppercase mb-1">PINGS_RECEIVED</div>
+            <div className="text-[#f2d48a] text-[20px] font-semibold">{stats.successCount}</div>
+          </div>
+          <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
+            <div className="text-[#5f636a] text-[9px] tracking-[0.26em] uppercase mb-1">MISSED</div>
+            <div className="text-[#ff6a6a] text-[20px] font-semibold">{stats.missedCount}</div>
+          </div>
+          <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
+            <div className="text-[#5f636a] text-[9px] tracking-[0.26em] uppercase mb-1">SUCCESS_RATE</div>
+            <div className="text-[#d6d7da] text-[20px] font-semibold">
+              {chartData.length > 0 ? ((stats.successCount / chartData.length) * 100).toFixed(1) : "0"}%
+            </div>
+          </div>
         </div>
-        <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
-          <div className="text-[#5f636a] text-[9px] tracking-[0.26em] uppercase mb-1">ERRORS</div>
-          <div className="text-[#ff6a6a] text-[20px] font-semibold">{stats.errorCount}</div>
+      ) : (
+        // Stats for regular monitors
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
+            <div className="text-[#5f636a] text-[9px] tracking-[0.26em] uppercase mb-1">SUCCESS</div>
+            <div className="text-[#f2d48a] text-[20px] font-semibold">{stats.successCount}</div>
+          </div>
+          <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
+            <div className="text-[#5f636a] text-[9px] tracking-[0.26em] uppercase mb-1">ERRORS</div>
+            <div className="text-[#ff6a6a] text-[20px] font-semibold">{stats.errorCount}</div>
+          </div>
+          <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
+            <div className="text-[#5f636a] text-[9px] tracking-[0.26em] uppercase mb-1">ANOMALIES</div>
+            <div className="text-[#ff9500] text-[20px] font-semibold">{stats.anomalyCount}</div>
+          </div>
+          <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
+            <div className="text-[#5f636a] text-[9px] tracking-[0.26em] uppercase mb-1">AVG_LATENCY</div>
+            <div className="text-[#d6d7da] text-[20px] font-semibold">{stats.avgLatency.toFixed(0)}ms</div>
+          </div>
         </div>
-        <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
-          <div className="text-[#5f636a] text-[9px] tracking-[0.26em] uppercase mb-1">ANOMALIES</div>
-          <div className="text-[#ff9500] text-[20px] font-semibold">{stats.anomalyCount}</div>
-        </div>
-        <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
-          <div className="text-[#5f636a] text-[9px] tracking-[0.26em] uppercase mb-1">AVG_LATENCY</div>
-          <div className="text-[#d6d7da] text-[20px] font-semibold">{stats.avgLatency.toFixed(0)}ms</div>
-        </div>
-      </div>
+      )}
 
       {/* Area Chart */}
       <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="text-[#d6d7da] text-[11px] tracking-[0.26em] uppercase">
-            RESPONSE_TIME_ANALYSIS
+            {isHeartbeatMonitor ? "PING_STATUS_TIMELINE" : "RESPONSE_TIME_ANALYSIS"}
           </div>
           <div className="flex items-center gap-4 text-[9px] tracking-[0.26em] uppercase">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-[#f2d48a]" />
-              <span className="text-[#6f6f6f]">SUCCESS</span>
+              <span className="text-[#6f6f6f]">{isHeartbeatMonitor ? "RECEIVED" : "SUCCESS"}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-[#ff6a6a]" />
-              <span className="text-[#6f6f6f]">ERROR</span>
+              <span className="text-[#6f6f6f]">{isHeartbeatMonitor ? "MISSED" : "ERROR"}</span>
             </div>
           </div>
         </div>
@@ -212,8 +289,11 @@ export function HeartbeatChart({ heartbeats }: HeartbeatChartProps) {
                 axisLine={{ stroke: "#2a2d31" }}
                 tick={{ fill: "#5f636a", fontSize: 10 }}
                 tickMargin={8}
+                domain={isHeartbeatMonitor ? [0, 1] : undefined}
+                ticks={isHeartbeatMonitor ? [0, 1] : undefined}
+                tickFormatter={isHeartbeatMonitor ? (value) => (value === 1 ? "RECEIVED" : "MISSED") : undefined}
                 label={{
-                  value: "LATENCY (MS)",
+                  value: isHeartbeatMonitor ? "STATUS" : "LATENCY (MS)",
                   angle: -90,
                   position: "insideLeft",
                   style: { fill: "#5f636a", fontSize: 10, letterSpacing: "0.18em" },
@@ -251,15 +331,17 @@ export function HeartbeatChart({ heartbeats }: HeartbeatChartProps) {
           {/* Success bar */}
           <div>
             <div className="flex items-center justify-between text-[10px] tracking-[0.22em] mb-1">
-              <span className="text-[#6f6f6f] uppercase">2XX_SUCCESS</span>
+              <span className="text-[#6f6f6f] uppercase">
+                {isHeartbeatMonitor ? "PINGS_RECEIVED" : "2XX_SUCCESS"}
+              </span>
               <span className="text-[#f2d48a]">
-                {((stats.successCount / chartData.length) * 100).toFixed(1)}%
+                {chartData.length > 0 ? ((stats.successCount / chartData.length) * 100).toFixed(1) : "0"}%
               </span>
             </div>
             <div className="h-2 bg-[rgba(0,0,0,0.3)] rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#f2d48a] transition-all"
-                style={{ width: `${(stats.successCount / chartData.length) * 100}%` }}
+                style={{ width: `${chartData.length > 0 ? (stats.successCount / chartData.length) * 100 : 0}%` }}
               />
             </div>
           </div>
@@ -268,33 +350,35 @@ export function HeartbeatChart({ heartbeats }: HeartbeatChartProps) {
           {stats.errorCount > 0 && (
             <div>
               <div className="flex items-center justify-between text-[10px] tracking-[0.22em] mb-1">
-                <span className="text-[#6f6f6f] uppercase">4XX/5XX_ERRORS</span>
+                <span className="text-[#6f6f6f] uppercase">
+                  {isHeartbeatMonitor ? "MISSED_PINGS" : "4XX/5XX_ERRORS"}
+                </span>
                 <span className="text-[#ff6a6a]">
-                  {((stats.errorCount / chartData.length) * 100).toFixed(1)}%
+                  {chartData.length > 0 ? ((stats.errorCount / chartData.length) * 100).toFixed(1) : "0"}%
                 </span>
               </div>
               <div className="h-2 bg-[rgba(0,0,0,0.3)] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[#ff6a6a] transition-all"
-                  style={{ width: `${(stats.errorCount / chartData.length) * 100}%` }}
+                  style={{ width: `${chartData.length > 0 ? (stats.errorCount / chartData.length) * 100 : 0}%` }}
                 />
               </div>
             </div>
           )}
 
-          {/* Anomaly bar */}
-          {stats.anomalyCount > 0 && (
+          {/* Anomaly bar (only for regular monitors) */}
+          {!isHeartbeatMonitor && stats.anomalyCount > 0 && (
             <div>
               <div className="flex items-center justify-between text-[10px] tracking-[0.22em] mb-1">
                 <span className="text-[#6f6f6f] uppercase">ANOMALIES</span>
                 <span className="text-[#ff9500]">
-                  {((stats.anomalyCount / chartData.length) * 100).toFixed(1)}%
+                  {chartData.length > 0 ? ((stats.anomalyCount / chartData.length) * 100).toFixed(1) : "0"}%
                 </span>
               </div>
               <div className="h-2 bg-[rgba(0,0,0,0.3)] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[#ff9500] transition-all"
-                  style={{ width: `${(stats.anomalyCount / chartData.length) * 100}%` }}
+                  style={{ width: `${chartData.length > 0 ? (stats.anomalyCount / chartData.length) * 100 : 0}%` }}
                 />
               </div>
             </div>
@@ -306,7 +390,7 @@ export function HeartbeatChart({ heartbeats }: HeartbeatChartProps) {
       {(stats.errorCount > 0 || stats.anomalyCount > 0) && (
         <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-5">
           <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase mb-4">
-            RECENT_ISSUES
+            {isHeartbeatMonitor ? "RECENT_MISSED_PINGS" : "RECENT_ISSUES"}
           </div>
           <div className="space-y-2 max-h-[150px] overflow-y-auto">
             {chartData
@@ -326,7 +410,10 @@ export function HeartbeatChart({ heartbeats }: HeartbeatChartProps) {
                       )}
                     />
                     <span className="text-[#d6d7da] tracking-[0.18em]">
-                      {d.is_anomaly ? "ANOMALY" : `ERROR_${d.status_code}`}
+                      {isHeartbeatMonitor 
+                        ? "MISSED_PING" 
+                        : (d.is_anomaly ? "ANOMALY" : `ERROR_${d.status_code}`)
+                      }
                     </span>
                     {d.error_message && (
                       <span className="text-[#6f6f6f] tracking-[0.18em] truncate max-w-[300px]">

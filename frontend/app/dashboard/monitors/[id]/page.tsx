@@ -468,36 +468,72 @@ export default function MonitorDetailPage() {
                     
                     return (
                   <div className="space-y-6">
-                    <DeepTraceWaterfall monitor={monitor as any} />
+                    {/* Deep Trace Waterfall - Only for non-heartbeat monitors */}
+                    {monitor.monitor_type !== "heartbeat" && (
+                      <DeepTraceWaterfall monitor={monitor as any} />
+                    )}
 
-                    {/* Stats */}
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                      <MetricCard
-                        label="UPTIME"
-                        value={`${monitor.uptime_percentage?.toFixed(2) ?? "0.00"}%`}
-                        tone="sand"
-                      />
-                      <MetricCard
-                        label="AVG_LATENCY"
-                        value={`${monitor.average_latency ?? 0}ms`}
-                        tone="white"
-                      />
-                      <MetricCard
-                        label="P95_LATENCY"
-                        value={`${calculateP95Latency(monitor.recent_heartbeats || [])}ms`}
-                        tone="white"
-                      />
-                      <MetricCard
-                        label="P99_LATENCY"
-                        value={`${calculateP99Latency(monitor.recent_heartbeats || [])}ms`}
-                        tone="white"
-                      />
-                      <MetricCard
-                        label="TOTAL_CHECKS"
-                        value={monitor.total_checks ?? 0}
-                        tone="white"
-                      />
-                    </div>
+                    {/* Stats - Different for heartbeat vs regular monitors */}
+                    {monitor.monitor_type === "heartbeat" ? (
+                      // Heartbeat Monitor Stats
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <MetricCard
+                          label="UPTIME"
+                          value={`${monitor.uptime_percentage?.toFixed(2) ?? "0.00"}%`}
+                          tone="sand"
+                        />
+                        <MetricCard
+                          label="TOTAL_PINGS"
+                          value={monitor.total_checks ?? 0}
+                          tone="white"
+                        />
+                        <MetricCard
+                          label="EXPECTED_EVERY"
+                          value={`${monitor.interval_seconds}s`}
+                          tone="white"
+                        />
+                        <MetricCard
+                          label="LAST_PING"
+                          value={monitor.last_ping_received 
+                            ? new Date(monitor.last_ping_received).toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : "Never"
+                          }
+                          tone={monitor.last_ping_received ? "white" : "red"}
+                        />
+                      </div>
+                    ) : (
+                      // Regular Monitor Stats
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <MetricCard
+                          label="UPTIME"
+                          value={`${monitor.uptime_percentage?.toFixed(2) ?? "0.00"}%`}
+                          tone="sand"
+                        />
+                        <MetricCard
+                          label="AVG_LATENCY"
+                          value={`${monitor.average_latency ?? 0}ms`}
+                          tone="white"
+                        />
+                        <MetricCard
+                          label="P95_LATENCY"
+                          value={`${calculateP95Latency(monitor.recent_heartbeats || [])}ms`}
+                          tone="white"
+                        />
+                        <MetricCard
+                          label="P99_LATENCY"
+                          value={`${calculateP99Latency(monitor.recent_heartbeats || [])}ms`}
+                          tone="white"
+                        />
+                        <MetricCard
+                          label="TOTAL_CHECKS"
+                          value={monitor.total_checks ?? 0}
+                          tone="white"
+                        />
+                      </div>
+                    )}
 
                     {/* Configuration */}
                     <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-5">
@@ -514,13 +550,103 @@ export default function MonitorDetailPage() {
                         />
                         <KeyValue k="INTERVAL" v={`${monitor.interval_seconds}s`} />
                         <KeyValue k="ACTIVE" v={monitor.is_active ? "YES" : "NO"} />
-                        <div className="md:col-span-2">
-                          <KeyValue k="URL" v={<span className="break-all">{monitor.url}</span>} />
-                        </div>
+                        {monitor.monitor_type !== "heartbeat" && (
+                          <div className="md:col-span-2">
+                            <KeyValue k="URL" v={<span className="break-all">{monitor.url}</span>} />
+                          </div>
+                        )}
                         <KeyValue k="CREATED" v={formatDate(monitor.created_at)} />
                         <KeyValue k="LAST_CHECK" v={formatDate(monitor.last_checked)} />
                       </div>
                     </div>
+
+                    {/* Heartbeat URL Section (only for heartbeat monitors) */}
+                    {monitor.monitor_type === "heartbeat" && monitor.heartbeat_url && (
+                      <div className="border border-[#f2d48a]/30 bg-[#f2d48a]/5 p-5">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="text-[#f2d48a] text-[12px] tracking-[0.26em] uppercase font-bold">
+                            HEARTBEAT_URL
+                          </div>
+                          <div className="h-[18px] px-2 border border-[#f2d48a]/30 bg-[#f2d48a]/10 text-[10px] tracking-[0.18em] uppercase text-[#f2d48a] flex items-center">
+                            REVERSE_PING
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          {/* URL Display with Copy Button */}
+                          <div className="flex items-center gap-3">
+                            <code className="flex-1 px-4 py-3 bg-[#0f1113] border border-[#1f2227] text-[#f2d48a] text-[12px] font-mono break-all">
+                              {monitor.heartbeat_url}
+                            </code>
+                            
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(monitor.heartbeat_url || "");
+                                // Could add toast notification here
+                              }}
+                              className="px-4 py-3 bg-[#f2d48a] text-[#0b0c0e] font-mono text-[10px] font-bold tracking-wider uppercase hover:bg-[#d6d7da] transition-all flex items-center gap-2 whitespace-nowrap"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                              COPY
+                            </button>
+                          </div>
+
+                          {/* Usage Example */}
+                          <div className="border-t border-[#f2d48a]/20 pt-4">
+                            <div className="text-[#6b6f76] text-[10px] tracking-[0.26em] uppercase mb-2 font-mono">
+                              USAGE_EXAMPLE:
+                            </div>
+                            <div className="bg-[#0f1113] border border-[#1f2227] p-4">
+                              <code className="text-[#d6d7da] text-[11px] font-mono block leading-relaxed">
+                                <span className="text-[#6b6f76]">#!/bin/bash</span><br />
+                                <br />
+                                <span className="text-[#6b6f76]"># Your script logic</span><br />
+                                <span className="text-[#d6d7da]">python3 backup_database.py</span><br />
+                                <br />
+                                <span className="text-[#6b6f76]"># Ping on success</span><br />
+                                <span className="text-[#f2d48a]">curl {monitor.heartbeat_url}</span>
+                              </code>
+                            </div>
+                          </div>
+
+                          {/* Quick Info */}
+                          <div className="border-t border-[#f2d48a]/20 pt-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[10px] font-mono">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[#6b6f76]">EXPECTED_INTERVAL:</span>
+                                <span className="text-[#f2d48a] font-bold">{monitor.interval_seconds}s</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[#6b6f76]">GRACE_PERIOD:</span>
+                                <span className="text-[#f2d48a] font-bold">5 minutes</span>
+                              </div>
+                              {monitor.last_ping_received && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[#6b6f76]">LAST_PING:</span>
+                                  <span className="text-[#d6d7da]">{formatDate(monitor.last_ping_received)}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2">
+                                <span className="text-[#6b6f76]">ALERT_ON:</span>
+                                <span className="text-[#ff6a6a] font-bold">SILENCE</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Tips */}
+                          <div className="border-t border-[#f2d48a]/20 pt-4">
+                            <div className="space-y-2 text-[#6b6f76] text-[10px] font-mono leading-relaxed">
+                              <p>• Add curl command at the <span className="text-[#f2d48a]">END</span> of your script</p>
+                              <p>• Only ping on <span className="text-[#f2d48a]">SUCCESS</span> (silence is the alarm!)</p>
+                              <p>• Works with GET or POST requests</p>
+                              <p>• No authentication required (URL is the secret)</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* SSL + Domain */}
                     {(monitor.ssl_status || monitor.domain_status) && (
@@ -714,7 +840,10 @@ export default function MonitorDetailPage() {
                       <div className="p-5 relative">
                         {/* Chart (still uses the same 50 events) */}
                         <div className={cn(range !== "TODAY" && "opacity-40 blur-[0.2px]")}>
-                          <HeartbeatChart heartbeats={(monitor as any).recent_heartbeats || []} />
+                          <HeartbeatChart 
+                            heartbeats={(monitor as any).recent_heartbeats || []} 
+                            monitorType={monitor.monitor_type}
+                          />
                         </div>
 
                         {/* Overlay for WEEK/MONTH (UI-only, no backend changes) */}

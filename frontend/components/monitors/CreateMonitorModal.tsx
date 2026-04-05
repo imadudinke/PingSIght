@@ -22,6 +22,11 @@ export function CreateMonitorModal({ isOpen, onClose, onSuccess }: CreateMonitor
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Heartbeat URL state
+  const [showHeartbeatUrl, setShowHeartbeatUrl] = useState(false);
+  const [heartbeatUrl, setHeartbeatUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
@@ -44,6 +49,18 @@ export function CreateMonitorModal({ isOpen, onClose, onSuccess }: CreateMonitor
     setSteps(newSteps);
   };
 
+  const handleCopyUrl = async () => {
+    if (heartbeatUrl) {
+      try {
+        await navigator.clipboard.writeText(heartbeatUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error("Failed to copy:", err);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -60,9 +77,11 @@ export function CreateMonitorModal({ isOpen, onClose, onSuccess }: CreateMonitor
           }
         });
 
-        if (response.response.ok) {
+        if (response.response.ok && response.data) {
+          // Show heartbeat URL instead of closing immediately
+          setHeartbeatUrl(response.data.heartbeat_url || null);
+          setShowHeartbeatUrl(true);
           onSuccess();
-          handleClose();
         } else {
           setError("Failed to create heartbeat monitor");
         }
@@ -101,6 +120,9 @@ export function CreateMonitorModal({ isOpen, onClose, onSuccess }: CreateMonitor
     setSteps([{ name: "", url: "", order: 1, required_keyword: "" }]);
     setError(null);
     setMonitorType("simple");
+    setShowHeartbeatUrl(false);
+    setHeartbeatUrl(null);
+    setCopied(false);
     onClose();
   };
 
@@ -129,6 +151,101 @@ export function CreateMonitorModal({ isOpen, onClose, onSuccess }: CreateMonitor
               ERROR: {error}
             </div>
           )}
+
+          {/* Heartbeat URL Success Display */}
+          {showHeartbeatUrl && heartbeatUrl ? (
+            <div className="space-y-6">
+              {/* Success Message */}
+              <div className="bg-[#f2d48a]/10 border border-[#f2d48a]/30 px-4 py-3">
+                <div className="flex items-center gap-2 text-[#f2d48a] text-xs font-mono tracking-wider uppercase mb-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  HEARTBEAT_MONITOR_CREATED
+                </div>
+                <p className="text-[#d6d7da] text-[10px] font-mono leading-relaxed">
+                  Your heartbeat monitor has been created successfully. Use the URL below in your scripts.
+                </p>
+              </div>
+
+              {/* Heartbeat URL Display */}
+              <div>
+                <label className="block text-[#6b6f76] text-[10px] tracking-[0.26em] uppercase mb-3 font-mono">
+                  YOUR_HEARTBEAT_URL
+                </label>
+                
+                <div className="bg-[#0b0c0e] border border-[#1f2227] p-4 space-y-3">
+                  {/* URL Display */}
+                  <div className="flex items-center gap-3">
+                    <code className="flex-1 px-3 py-2 bg-[#15171a] border border-[#1f2227] text-[#f2d48a] text-[11px] font-mono break-all">
+                      {heartbeatUrl}
+                    </code>
+                    
+                    <button
+                      type="button"
+                      onClick={handleCopyUrl}
+                      className="px-4 py-2 bg-[#f2d48a] text-[#0b0c0e] font-mono text-[10px] font-bold tracking-wider uppercase hover:bg-[#d6d7da] transition-all flex items-center gap-2 whitespace-nowrap"
+                    >
+                      {copied ? (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          COPIED!
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                          COPY
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Usage Instructions */}
+                  <div className="pt-3 border-t border-[#1f2227]">
+                    <p className="text-[#6b6f76] text-[9px] tracking-wider uppercase font-mono mb-2">
+                      USAGE_EXAMPLE:
+                    </p>
+                    <div className="bg-[#15171a] border border-[#1f2227] p-3">
+                      <code className="text-[#d6d7da] text-[10px] font-mono block">
+                        #!/bin/bash<br />
+                        <br />
+                        # Your script logic<br />
+                        python3 backup_database.py<br />
+                        <br />
+                        # Ping on success<br />
+                        <span className="text-[#f2d48a]">curl {heartbeatUrl}</span>
+                      </code>
+                    </div>
+                  </div>
+
+                  {/* Additional Info */}
+                  <div className="pt-3 border-t border-[#1f2227]">
+                    <div className="space-y-2 text-[#6b6f76] text-[9px] font-mono leading-relaxed">
+                      <p>• Add this curl command at the END of your script</p>
+                      <p>• Only ping on SUCCESS (silence is the alarm!)</p>
+                      <p>• Expected interval: <span className="text-[#f2d48a]">{intervalSeconds}s</span></p>
+                      <p>• Grace period: <span className="text-[#f2d48a]">5 minutes</span></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={handleClose}
+                className="w-full bg-[#f2d48a] text-[#0b0c0e] font-mono text-xs font-bold tracking-wider uppercase py-3 hover:bg-[#d6d7da] transition-all"
+              >
+                DONE
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Regular Form Fields */}
 
           {/* Monitor Type */}
           <div>
@@ -303,6 +420,8 @@ export function CreateMonitorModal({ isOpen, onClose, onSuccess }: CreateMonitor
               {loading ? "CREATING..." : "CREATE_MONITOR"}
             </button>
           </div>
+          </>
+          )}
         </form>
       </div>
     </div>
