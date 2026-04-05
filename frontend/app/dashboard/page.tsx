@@ -14,12 +14,14 @@ import { LegendDot } from "@/components/dashboard/LegendDot";
 import { MonitorRow } from "@/components/dashboard/MonitorRow";
 import { LogRow } from "@/components/dashboard/LogRow";
 import { Pagination } from "@/components/dashboard/Pagination";
+import { CreateMonitorModal } from "@/components/monitors/CreateMonitorModal";
 
 export default function Dashboard() {
   const router = useRouter();
   const { isAuthenticated, isLoading, user } = useAuth();
-  const { monitors, loading: loadingMonitors } = useMonitors();
+  const { monitors, loading: loadingMonitors, refetch } = useMonitors();
   const [currentPage, setCurrentPage] = useState(1);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -109,9 +111,17 @@ export default function Dashboard() {
                 <div className="text-[#d6d7da] text-[14px] tracking-[0.18em] uppercase">
                   ACTIVE_MONITORS [N:{totalMonitors}]
                 </div>
-                <div className="flex items-center gap-6 text-[10px] tracking-[0.26em] uppercase">
-                  <LegendDot label="OPERATIONAL" color="#f2d48a" />
-                  <LegendDot label="DEGRADED" color="#ff6a6a" />
+                <div className="flex items-center gap-6">
+                  <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="bg-[#f2d48a] text-[#0b0c0e] font-mono text-[10px] font-bold tracking-[0.26em] uppercase px-4 py-2 hover:bg-[#d6d7da] transition-all"
+                  >
+                    + NEW_MONITOR
+                  </button>
+                  <div className="flex items-center gap-6 text-[10px] tracking-[0.26em] uppercase">
+                    <LegendDot label="OPERATIONAL" color="#f2d48a" />
+                    <LegendDot label="DEGRADED" color="#ff6a6a" />
+                  </div>
                 </div>
               </div>
               <Panel className="overflow-hidden">
@@ -200,6 +210,15 @@ export default function Dashboard() {
           <DashboardFooter />
         </div>
       </div>
+
+      {/* Create Monitor Modal */}
+      <CreateMonitorModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={() => {
+          refetch();
+        }}
+      />
     </div>
   );
 }
