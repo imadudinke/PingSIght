@@ -6,11 +6,11 @@ interface Heartbeat {
   id: number;
   status_code: number;
   latency_ms: number;
-  tcp_connect_ms: number | null;
-  tls_handshake_ms: number | null;
-  ttfb_ms: number | null;
-  is_anomaly: boolean;
-  error_message: string | null;
+  tcp_connect_ms?: number | null;
+  tls_handshake_ms?: number | null;
+  ttfb_ms?: number | null;
+  is_anomaly?: boolean;
+  error_message?: string | null;
   created_at: string;
 }
 
