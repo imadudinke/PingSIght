@@ -9,6 +9,7 @@ from datetime import timezone
 
 from app.db.session import get_db
 from app.models.monitor import Monitor
+from app.models.heartbeat import Heartbeat
 from app.models.user import User
 from app.schemas.monitor import (
     MonitorCreate,
@@ -694,3 +695,145 @@ async def get_monitor_timing_stats(
         "url": monitor.url,
         "timing_statistics": timing_stats
     }
+
+
+@router.post("/{monitor_id}/share")
+async def enable_monitor_sharing(
+    monitor_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Enable public sharing for a monitor and generate share token"""
+    result = await db.execute(
+        select(Monitor).where(
+            and_(Monitor.id == monitor_id, Monitor.user_id == current_user.id)
+        )
+    )
+    monitor = result.scalar_one_or_none()
+    
+    if not monitor:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+    
+    # Generate share token if not exists
+    if not monitor.share_token:
+        monitor.generate_share_token()
+    
+    # Enable public sharing
+    monitor.is_public = True
+    
+    await db.commit()
+    await db.refresh(monitor)
+    
+    # Build share URL
+    share_url = f"{settings.frontend_url}/share/{monitor.share_token}"
+    
+    return {
+        "success": True,
+        "share_token": monitor.share_token,
+        "share_url": share_url,
+        "is_public": monitor.is_public
+    }
+
+
+@router.delete("/{monitor_id}/share")
+async def disable_monitor_sharing(
+    monitor_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Disable public sharing for a monitor"""
+    result = await db.execute(
+        select(Monitor).where(
+            and_(Monitor.id == monitor_id, Monitor.user_id == current_user.id)
+        )
+    )
+    monitor = result.scalar_one_or_none()
+    
+    if not monitor:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+    
+    # Disable public sharing
+    monitor.is_public = False
+    
+    await db.commit()
+    
+    return {
+        "success": True,
+        "is_public": False
+    }
+
+
+@router.get("/shared/{share_token}", response_model=MonitorDetailResponse)
+async def get_shared_monitor(
+    share_token: str,
+    include_heartbeats: int = Query(default=50, le=200),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get monitor details by share token (public access, no authentication required)"""
+    result = await db.execute(
+        select(Monitor).where(
+            and_(Monitor.share_token == share_token, Monitor.is_public == True)
+        )
+    )
+    monitor = result.scalar_one_or_none()
+    
+    if not monitor:
+        raise HTTPException(status_code=404, detail="Shared monitor not found or sharing is disabled")
+    
+    # Get recent heartbeats
+    heartbeats_result = await db.execute(
+        select(Heartbeat)
+        .where(Heartbeat.monitor_id == monitor.id)
+        .order_by(Heartbeat.created_at.desc())
+        .limit(include_heartbeats)
+    )
+    heartbeats = heartbeats_result.scalars().all()
+    
+    # Calculate stats
+    stats = await MonitorService.calculate_monitor_stats(db, monitor.id)
+    
+    # Build response
+    response_data = {
+        "id": str(monitor.id),
+        "user_id": str(monitor.user_id),
+        "url": monitor.url,
+        "friendly_name": monitor.name,
+        "interval_seconds": monitor.interval_seconds,
+        "status": monitor.last_status,
+        "is_active": monitor.is_active,
+        "is_maintenance": monitor.is_maintenance,
+        "last_checked": heartbeats[0].created_at.isoformat() if heartbeats else None,
+        "created_at": monitor.created_at.isoformat(),
+        "monitor_type": monitor.monitor_type,
+        "steps": monitor.steps,
+        "ssl_status": monitor.ssl_status,
+        "ssl_expiry_date": monitor.ssl_expiry_date.isoformat() if monitor.ssl_expiry_date else None,
+        "ssl_days_remaining": monitor.ssl_days_remaining,
+        "domain_status": monitor.domain_status,
+        "domain_expiry_date": monitor.domain_expiry_date.isoformat() if monitor.domain_expiry_date else None,
+        "domain_days_remaining": monitor.domain_days_remaining,
+        "domain_last_checked": monitor.domain_last_checked.isoformat() if monitor.domain_last_checked else None,
+        "last_ping_received": monitor.last_ping_received.isoformat() if monitor.last_ping_received else None,
+        "heartbeat_url": _heartbeat_url_for_monitor(monitor),
+        "recent_heartbeats": [
+            {
+                "id": hb.id,
+                "status_code": hb.status_code,
+                "latency_ms": hb.latency_ms,
+                "tcp_connect_ms": hb.tcp_connect_ms,
+                "tls_handshake_ms": hb.tls_handshake_ms,
+                "ttfb_ms": hb.ttfb_ms,
+                "timing_details": hb.timing_details,
+                "step_results": hb.step_results,
+                "is_anomaly": hb.is_anomaly,
+                "error_message": hb.error_message,
+                "created_at": hb.created_at.isoformat()
+            }
+            for hb in heartbeats
+        ],
+        "uptime_percentage": stats.uptime_percentage,
+        "average_latency": stats.average_latency,
+        "total_checks": stats.total_checks
+    }
+    
+    return response_data

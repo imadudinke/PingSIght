@@ -17,6 +17,7 @@ import { Pagination } from "@/components/dashboard/Pagination";
 import { CreateMonitorModal } from "@/components/monitors/CreateMonitorModal";
 import { EditMonitorModal } from "@/components/monitors/EditMonitorModal";
 import { DeleteConfirmModal } from "@/components/monitors/DeleteConfirmModal";
+import { ShareMonitorModal } from "@/components/monitors/ShareMonitorModal";
 import { MonitorActionsMenu } from "@/components/monitors/MonitorActionsMenu";
 import type { MonitorResponse } from "@/lib/api/types.gen";
 
@@ -28,6 +29,7 @@ export default function HeartbeatsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [selectedMonitor, setSelectedMonitor] = useState<MonitorResponse | null>(null);
   const itemsPerPage = 10;
 
@@ -251,6 +253,10 @@ export default function HeartbeatsPage() {
                                     setSelectedMonitor(m);
                                     setIsDeleteModalOpen(true);
                                   }}
+                                  onShare={() => {
+                                    setSelectedMonitor(m);
+                                    setIsShareModalOpen(true);
+                                  }}
                                   onMaintenanceToggle={() => refetch()}
                                 />
                               </div>
@@ -307,6 +313,17 @@ export default function HeartbeatsPage() {
         }}
         onSuccess={() => {
           refetch();
+        }}
+      />
+
+      {/* Share Monitor Modal */}
+      <ShareMonitorModal
+        isOpen={isShareModalOpen}
+        monitorId={selectedMonitor?.id || ""}
+        monitorName={selectedMonitor?.friendly_name || ""}
+        onClose={() => {
+          setIsShareModalOpen(false);
+          setSelectedMonitor(null);
         }}
       />
     </div>

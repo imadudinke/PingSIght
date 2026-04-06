@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import secrets
 from uuid import uuid4
 from datetime import datetime
 
@@ -44,6 +45,10 @@ class Monitor(Base):
     # Heartbeat monitoring field
     last_ping_received: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Public sharing fields
+    share_token: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True, index=True)
+    is_public: Mapped[bool] = mapped_column(Boolean, default=False)
+
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
     user: Mapped["User"] = relationship("User", back_populates="monitors")
@@ -58,3 +63,8 @@ class Monitor(Base):
     @interval.setter
     def interval(self, value: int) -> None:
         self.interval_seconds = value
+
+    def generate_share_token(self) -> str:
+        """Generate a unique share token for public access"""
+        self.share_token = secrets.token_urlsafe(32)
+        return self.share_token
