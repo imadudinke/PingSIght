@@ -45,14 +45,25 @@ export function EditMonitorModal({ isOpen, monitor, onClose, onSuccess }: EditMo
         body: updateData
       });
 
-      if (response.response.ok) {
+      if (response.error) {
+        // Parse validation errors
+        const errorData = response.error as any;
+        if (errorData.detail && Array.isArray(errorData.detail)) {
+          const errorMessages = errorData.detail.map((err: any) => {
+            const field = err.loc?.slice(1).join('.') || 'unknown';
+            return `${field.toUpperCase()}: ${err.msg}`;
+          }).join('\n');
+          setError(errorMessages);
+        } else {
+          setError(errorData.detail || "Failed to update monitor");
+        }
+      } else {
         onSuccess();
         handleClose();
-      } else {
-        setError("Failed to update monitor");
       }
     } catch (err: any) {
-      setError(err?.message || "An error occurred while updating the monitor");
+      console.error("Error updating monitor:", err);
+      setError(err?.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
@@ -84,8 +95,20 @@ export function EditMonitorModal({ isOpen, monitor, onClose, onSuccess }: EditMo
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && (
-            <div className="bg-[#ff6a6a]/10 border border-[#ff6a6a]/30 px-4 py-3 text-[#ff6a6a] text-xs font-mono">
-              ERROR: {error}
+            <div className="bg-[#ff6a6a]/10 border border-[#ff6a6a]/30 px-4 py-3">
+              <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 text-[#ff6a6a] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <div className="text-[#ff6a6a] text-[10px] tracking-wider uppercase font-mono font-bold mb-1">
+                    VALIDATION_ERROR
+                  </div>
+                  <div className="text-[#ff6a6a] text-[10px] font-mono leading-relaxed whitespace-pre-line">
+                    {error}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

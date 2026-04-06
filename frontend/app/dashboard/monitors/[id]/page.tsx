@@ -371,14 +371,14 @@ export default function MonitorDetailPage() {
       <BackgroundLayers />
 
       <div className="flex min-h-screen">
-        <DashboardSidebar />
+        <DashboardSidebar onNewMonitor={() => router.push("/dashboard/monitors")} />
 
         <div className="flex-1 flex flex-col">
           <DashboardHeader userEmail={user?.email} />
 
           <div className="flex-1 px-8 py-8 overflow-auto">
             <button
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.push("/dashboard/monitors")}
               className={cn(
                 "mb-6 h-10 px-4 flex items-center gap-2",
                 "border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]",
