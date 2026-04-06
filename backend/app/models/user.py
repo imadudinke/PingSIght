@@ -21,3 +21,6 @@ class User(Base):
     social_accounts: Mapped[list["SocialAccount"]] = relationship(
         "SocialAccount", back_populates="user"
     )
+    notification_settings: Mapped["UserNotificationSettings"] = relationship(
+        "UserNotificationSettings", back_populates="user", uselist=False
+    )

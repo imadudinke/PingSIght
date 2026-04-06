@@ -143,8 +143,8 @@ export function DashboardSidebar({ onNewMonitor }: { onNewMonitor?: () => void }
         <SidebarItem 
           active={isSettings} 
           icon="gear" 
-          label="SETTINGS" 
-          onClick={() => showComingSoon("Settings")}
+          label="NOTIFICATIONS" 
+          href="/dashboard/settings"
         />
         <button
           onClick={handleNewMonitor}

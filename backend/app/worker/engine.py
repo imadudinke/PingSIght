@@ -16,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.models.monitor import Monitor
 from app.models.heartbeat import Heartbeat
 from app.worker.ssl_checker import get_ssl_info
+from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -597,6 +598,13 @@ async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:
             ssl_info = None
         
         try:
+            # Get current monitor to check for status changes
+            monitor_result = await db.execute(
+                select(Monitor).where(Monitor.id == monitor_id)
+            )
+            monitor = monitor_result.scalar_one_or_none()
+            previous_status = monitor.last_status if monitor else None
+            
             # Update Monitor with status and SSL info
             update_values = {"last_status": result["status"]}
             logger.debug(f"[DB_UPDATE] Base update values: {update_values}")
@@ -619,6 +627,22 @@ async def perform_check(monitor_id: UUID, url: str, db: AsyncSession) -> dict:
                 .values(**update_values)
             )
             logger.info(f"[DB_UPDATE] Monitor {monitor_id} updated successfully")
+            
+            # Refresh monitor to get updated values
+            await db.refresh(monitor)
+            
+            # Send notifications for status changes
+            if previous_status and previous_status != result["status"]:
+                if result["status"] == "DOWN" and previous_status == "UP":
+                    logger.info(f"[NOTIFICATION] Monitor {monitor_id} went DOWN, sending alert")
+                    await NotificationService.send_monitor_down_alert(db, monitor, result.get("error"))
+                elif result["status"] == "UP" and previous_status == "DOWN":
+                    logger.info(f"[NOTIFICATION] Monitor {monitor_id} recovered, sending alert")
+                    await NotificationService.send_monitor_recovery_alert(db, monitor)
+            
+            # Send SSL expiry alerts
+            if ssl_info and ssl_info["days_remaining"] is not None:
+                await NotificationService.send_ssl_expiry_alert(db, monitor, ssl_info["days_remaining"])
             
             # ANOMALY DETECTION: Calculate average and detect anomalies
             avg_latency = await get_average_latency(db, monitor_id, limit=10)
