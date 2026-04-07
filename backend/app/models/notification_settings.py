@@ -21,6 +21,10 @@ class UserNotificationSettings(Base):
     discord_webhook_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     discord_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     
+    # Slack settings - now enabled since migration is applied
+    slack_webhook_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    slack_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    
     # Alert preferences
     alert_on_down: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     alert_on_recovery: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

@@ -13,7 +13,7 @@ interface MonitorActionsMenuProps {
   onEdit: () => void;
   onDelete: () => void;
   onShare: () => void;
-  onMaintenanceToggle: () => void;
+  onMaintenanceToggle: (updatedMonitor: MonitorResponse) => void;
 }
 
 export function MonitorActionsMenu({ 
@@ -37,10 +37,29 @@ export function MonitorActionsMenu({
   useEffect(() => {
     if (isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.right + window.scrollX - 224 // 224px = w-56
-      });
+      const viewportHeight = window.innerHeight;
+      const dropdownHeight = 280; // Approximate height of dropdown
+      
+      // Calculate position relative to viewport
+      let top = rect.bottom + 4;
+      let left = rect.right - 224; // 224px = w-56
+      
+      // Adjust if dropdown would go below viewport
+      if (top + dropdownHeight > viewportHeight) {
+        top = rect.top - dropdownHeight - 4;
+      }
+      
+      // Adjust if dropdown would go outside left edge
+      if (left < 8) {
+        left = 8;
+      }
+      
+      // Adjust if dropdown would go outside right edge
+      if (left + 224 > window.innerWidth - 8) {
+        left = window.innerWidth - 224 - 8;
+      }
+      
+      setDropdownPosition({ top, left });
     }
   }, [isOpen]);
 
@@ -62,14 +81,46 @@ export function MonitorActionsMenu({
       }
     };
 
+    const handleScroll = () => {
+      if (isOpen) {
+        // Reposition dropdown on scroll
+        if (buttonRef.current) {
+          const rect = buttonRef.current.getBoundingClientRect();
+          const viewportHeight = window.innerHeight;
+          const dropdownHeight = 280;
+          
+          let top = rect.bottom + 4;
+          let left = rect.right - 224;
+          
+          if (top + dropdownHeight > viewportHeight) {
+            top = rect.top - dropdownHeight - 4;
+          }
+          
+          if (left < 8) {
+            left = 8;
+          }
+          
+          if (left + 224 > window.innerWidth - 8) {
+            left = window.innerWidth - 224 - 8;
+          }
+          
+          setDropdownPosition({ top, left });
+        }
+      }
+    };
+
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       document.addEventListener("keydown", handleEscape);
+      window.addEventListener("scroll", handleScroll, true); // Use capture to catch all scroll events
+      window.addEventListener("resize", handleScroll);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", handleScroll);
     };
   }, [isOpen]);
 
@@ -87,7 +138,14 @@ export function MonitorActionsMenu({
           path: { monitor_id: monitor.id }
         });
       }
-      onMaintenanceToggle();
+      
+      // Create updated monitor object
+      const updatedMonitor = {
+        ...monitor,
+        is_maintenance: !monitor.is_maintenance
+      };
+      
+      onMaintenanceToggle(updatedMonitor);
     } catch (error) {
       console.error("Failed to toggle maintenance mode:", error);
     } finally {
@@ -115,10 +173,11 @@ export function MonitorActionsMenu({
       {mounted && isOpen && createPortal(
         <div 
           ref={menuRef}
-          className="fixed w-56 bg-[#0f1113] border border-[#1f2227] shadow-2xl z-[10000] animate-in fade-in slide-in-from-top-2 duration-200"
+          className="fixed w-56 bg-[#0f1113] border border-[#1f2227] shadow-2xl z-[10000] opacity-0 scale-95 animate-in fade-in zoom-in-95 duration-150"
           style={{
             top: `${dropdownPosition.top}px`,
-            left: `${dropdownPosition.left}px`
+            left: `${dropdownPosition.left}px`,
+            animation: 'fadeInScale 150ms ease-out forwards'
           }}
         >
           {/* Edit */}
@@ -196,6 +255,19 @@ export function MonitorActionsMenu({
         </div>,
         document.body
       )}
+      
+      <style jsx>{`
+        @keyframes fadeInScale {
+          from {
+            opacity: 0;
+            transform: scale(0.95) translateY(-4px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }

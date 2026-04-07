@@ -9,10 +9,13 @@ import { DashboardHeader } from "@/components/dashboard/Header";
 import { DashboardFooter } from "@/components/dashboard/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface NotificationSettings {
   discord_webhook_url: string | null;
   discord_enabled: boolean;
+  slack_webhook_url: string | null;
+  slack_enabled: boolean;
   alert_on_down: boolean;
   alert_on_recovery: boolean;
   alert_threshold: number;
@@ -203,6 +206,8 @@ export default function NotificationsPage() {
   const [settings, setSettings] = useState<NotificationSettings>({
     discord_webhook_url: null,
     discord_enabled: false,
+    slack_webhook_url: null,
+    slack_enabled: false,
     alert_on_down: true,
     alert_on_recovery: true,
     alert_threshold: 1,
@@ -338,7 +343,7 @@ export default function NotificationsPage() {
         <BackgroundLayers />
         <div className="flex min-h-screen">
           <DashboardSidebar />
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col ml-[248px]">
             <DashboardHeader userEmail={user?.email} />
             <div className="flex-1 px-8 py-8 overflow-auto">
               <Panel className="p-0">
@@ -346,13 +351,52 @@ export default function NotificationsPage() {
                   <div className="text-[#d6d7da] text-[14px] tracking-[0.18em] uppercase">
                     NOTIFICATIONS
                   </div>
-                  <div className="mt-1 text-[#6f6f6f] text-[11px] tracking-[0.10em]">
-                    LOADING_CONFIGURATION...
-                  </div>
+                  <Skeleton className="h-3 w-48 mt-1" />
                 </div>
                 <div className="p-6">
-                  <div className="py-14 text-center text-[#6f6f6f] text-[11px] tracking-[0.28em] uppercase">
-                    LOADING_NOTIFICATIONS...
+                  <div className="space-y-6">
+                    {/* Discord Section Skeleton */}
+                    <div className="space-y-4">
+                      <Skeleton className="h-4 w-32" />
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="w-4 h-4" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    </div>
+
+                    {/* Slack Section Skeleton */}
+                    <div className="space-y-4">
+                      <Skeleton className="h-4 w-24" />
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="w-4 h-4" />
+                          <Skeleton className="h-3 w-20" />
+                        </div>
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    </div>
+
+                    {/* Alert Settings Skeleton */}
+                    <div className="space-y-4">
+                      <Skeleton className="h-4 w-36" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                          <div key={i} className="flex items-center gap-3">
+                            <Skeleton className="w-4 h-4" />
+                            <Skeleton className="h-3 w-32" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons Skeleton */}
+                    <div className="flex items-center gap-4 pt-4">
+                      <Skeleton className="h-10 w-24" />
+                      <Skeleton className="h-10 w-20" />
+                    </div>
                   </div>
                 </div>
               </Panel>
@@ -364,7 +408,10 @@ export default function NotificationsPage() {
     );
   }
 
-  const canTest = Boolean(settings.discord_webhook_url && settings.discord_enabled);
+  const canTest = Boolean(
+    (settings.discord_webhook_url && settings.discord_enabled) ||
+    (settings.slack_webhook_url && settings.slack_enabled)
+  );
 
   return (
     <div className="min-h-screen text-[#b0b3b8] font-mono">
@@ -373,7 +420,7 @@ export default function NotificationsPage() {
       <div className="flex min-h-screen">
         <DashboardSidebar />
 
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col ml-[248px]">
           <DashboardHeader userEmail={user?.email} />
 
           <div className="flex-1 px-8 py-8 overflow-auto max-w-5xl">
@@ -382,7 +429,7 @@ export default function NotificationsPage() {
                 NOTIFICATIONS
               </div>
               <div className="mt-1 text-[#6f6f6f] text-[11px] tracking-[0.10em]">
-                DISCORD_WEBHOOKS_AND_ALERT_PREFERENCES
+                DISCORD_AND_SLACK_WEBHOOKS_AND_ALERT_PREFERENCES
               </div>
             </div>
 
@@ -465,6 +512,61 @@ export default function NotificationsPage() {
                   >
                     {testing ? "SENDING..." : "SEND_TEST_NOTIFICATION"}
                   </button>
+                </div>
+              </div>
+            </Panel>
+
+            {/* SLACK */}
+            <Panel className="p-0 mb-6">
+              <div className="px-6 py-5 border-b border-[#15171a] flex items-start justify-between gap-6">
+                <div>
+                  <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
+                    SLACK_NOTIFICATIONS
+                  </div>
+                  <div className="mt-1 text-[#5f636a] text-[11px] leading-relaxed">
+                    RECEIVE_ALERTS_VIA_SLACK_WEBHOOK
+                  </div>
+                </div>
+
+                <Toggle
+                  checked={settings.slack_enabled}
+                  onChange={(v) =>
+                    setSettings((s) => ({ ...s, slack_enabled: v }))
+                  }
+                  label="SLACK_ENABLED"
+                  hint="ENABLE_OR_DISABLE_SLACK_DELIVERY"
+                />
+              </div>
+
+              <div className="p-6 space-y-6">
+                <Field
+                  label="SLACK_WEBHOOK_URL"
+                  hint="WORKSPACE → APPS → INCOMING_WEBHOOKS"
+                >
+                  <Input
+                    type="url"
+                    value={settings.slack_webhook_url || ""}
+                    onChange={(v) =>
+                      setSettings((s) => ({
+                        ...s,
+                        slack_webhook_url: v || null,
+                      }))
+                    }
+                    placeholder="https://hooks.slack.com/services/..."
+                    disabled={!settings.slack_enabled}
+                  />
+                </Field>
+
+                <div className="border border-[#f2d48a]/20 bg-[#f2d48a]/5 p-4">
+                  <div className="text-[#f2d48a] text-[10px] tracking-[0.26em] uppercase mb-2">
+                    HOW_TO_GET_SLACK_WEBHOOK
+                  </div>
+                  <div className="text-[#d6d7da] text-[10px] leading-relaxed space-y-1">
+                    <p>1. Go to your Slack workspace settings</p>
+                    <p>2. Navigate to Apps → Incoming Webhooks</p>
+                    <p>3. Click "Add to Slack" and select a channel</p>
+                    <p>4. Copy the webhook URL and paste it above</p>
+                  </div>
                 </div>
               </div>
             </Panel>

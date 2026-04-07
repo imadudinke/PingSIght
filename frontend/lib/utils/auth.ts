@@ -12,8 +12,11 @@ export function logout() {
       method: 'POST',
       credentials: 'include'
     }
-  ).finally(() => {
-    // Redirect to home page
+  ).catch((error) => {
+    // Backend might be offline, but we still want to logout on frontend
+    console.warn('Logout request failed, but clearing frontend session:', error);
+  }).finally(() => {
+    // Always redirect to home page, even if backend call fails
     window.location.href = '/';
   });
 }

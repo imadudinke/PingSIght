@@ -12,16 +12,25 @@ import { DashboardSidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/Header";
 import { DashboardFooter } from "@/components/dashboard/Footer";
 import { HeartbeatChart } from "@/components/dashboard/HeartbeatChart";
+import { ShareMonitorModal } from "@/components/monitors/ShareMonitorModal";
+import { MetricCardSkeleton, HeartbeatRowSkeleton, DeepTraceSkeleton, ChartSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { getDeepTrace, getSSLIssuer, getSSLCommonName, calculateP95Latency, calculateP99Latency, calculateDowntimeDuration } from "@/lib/utils/monitor";
 
 type MonitorDetail = GetMonitorMonitorsMonitorIdGetResponses[200];
 
 type RangeKey = "TODAY" | "WEEK" | "MONTH";
+type GraphRangeKey = "24H" | "7D" | "30D";
 
 const RANGE_UI: Record<RangeKey, { label: string; hint: string }> = {
   TODAY: { label: "TODAY", hint: "LAST_50_EVENTS" },
   WEEK: { label: "7D", hint: "REQUIRES_EXTENDED_TELEMETRY" },
   MONTH: { label: "30D", hint: "REQUIRES_EXTENDED_TELEMETRY" },
+};
+
+const GRAPH_RANGE_UI: Record<GraphRangeKey, { label: string; hint: string }> = {
+  "24H": { label: "24H", hint: "LAST_24_HOURS" },
+  "7D": { label: "7D", hint: "LAST_7_DAYS" },
+  "30D": { label: "30D", hint: "LAST_30_DAYS" },
 };
 
 function RangeTabs({
@@ -53,6 +62,43 @@ function RangeTabs({
               )}
             >
               {RANGE_UI[k].label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function GraphRangeTabs({
+  value,
+  onChange,
+}: {
+  value: GraphRangeKey;
+  onChange: (v: GraphRangeKey) => void;
+}) {
+  const keys: GraphRangeKey[] = ["24H", "7D", "30D"];
+  return (
+    <div className="flex items-center gap-2">
+      <div className="text-[#5f636a] text-[10px] tracking-[0.26em] uppercase mr-3">
+        PING_TIMELINE
+      </div>
+      <div className="flex border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]">
+        {keys.map((k) => {
+          const active = value === k;
+          return (
+            <button
+              key={k}
+              onClick={() => onChange(k)}
+              className={cn(
+                "h-8 px-4",
+                "text-[10px] tracking-[0.26em] uppercase",
+                active
+                  ? "bg-[rgba(255,255,255,0.06)] text-[#f2d48a]"
+                  : "text-[#6f6f6f] hover:text-[#d6d7da] transition"
+              )}
+            >
+              {GRAPH_RANGE_UI[k].label}
             </button>
           );
         })}
@@ -235,6 +281,8 @@ export default function MonitorDetailPage() {
 
   // UI-only range selector (NO API changes)
   const [range, setRange] = useState<RangeKey>("TODAY");
+  const [graphRange, setGraphRange] = useState<GraphRangeKey>("24H");
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // normalize param id (string | string[])
   const rawId = (params as any)?.id as string | string[] | undefined;
@@ -373,7 +421,7 @@ export default function MonitorDetailPage() {
       <div className="flex min-h-screen">
         <DashboardSidebar onNewMonitor={() => router.push("/dashboard/monitors")} />
 
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col ml-[248px]">
           <DashboardHeader userEmail={user?.email} />
 
           <div className="flex-1 px-8 py-8 overflow-auto">
@@ -427,6 +475,22 @@ export default function MonitorDetailPage() {
                   </div>
 
                   <div className="flex items-center gap-4">
+                    {/* Share button */}
+                    <button
+                      onClick={() => setShowShareModal(true)}
+                      className={cn(
+                        "h-8 px-3 flex items-center gap-2",
+                        "border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]",
+                        "text-[10px] tracking-[0.26em] uppercase transition",
+                        "text-[#a9acb2] hover:text-[#d6d7da] hover:border-[#3a3d42]"
+                      )}
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                      </svg>
+                      <span>SHARE</span>
+                    </button>
+                    
                     {/* Manual refresh button */}
                     <button
                       onClick={() => fetchMonitorDetails(true)}
@@ -452,8 +516,76 @@ export default function MonitorDetailPage() {
 
               <div className="p-6">
                 {loading ? (
-                  <div className="py-14 text-center text-[#6f6f6f] text-[11px] tracking-[0.28em] uppercase">
-                    LOADING_MONITOR_DATA...
+                  <div className="space-y-6">
+                    {/* Deep Trace Skeleton */}
+                    <DeepTraceSkeleton />
+
+                    {/* Stats Skeleton */}
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <MetricCardSkeleton key={i} />
+                      ))}
+                    </div>
+
+                    {/* Configuration Skeleton */}
+                    <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-5">
+                      <Skeleton className="h-4 w-32 mb-4" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Array.from({ length: 8 }).map((_, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <Skeleton className="h-3 w-16" />
+                            <Skeleton className="h-3 w-24" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Chart Skeleton */}
+                    <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]">
+                      <div className="px-5 py-4 border-b border-[#15171a] flex items-center justify-between">
+                        <Skeleton className="h-4 w-48" />
+                        <Skeleton className="h-8 w-32" />
+                      </div>
+                      <div className="p-5">
+                        <ChartSkeleton />
+                      </div>
+                    </div>
+
+                    {/* Incident Log Skeleton */}
+                    <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]">
+                      <div className="px-5 py-4 border-b border-[#15171a] flex items-center justify-between">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-[#15171a]">
+                              <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                                TIMESTAMP
+                              </th>
+                              <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                                STATUS
+                              </th>
+                              <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                                ERROR_CODE
+                              </th>
+                              <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                                DOWNTIME
+                              </th>
+                              <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                                MESSAGE
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <HeartbeatRowSkeleton key={i} />
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
                 ) : error ? (
                   <div className="py-14 text-center text-[#ff6a6a] text-[11px] tracking-[0.28em] uppercase">
@@ -826,52 +958,84 @@ export default function MonitorDetailPage() {
                       </div>
                     </div>
 
-                    {/* Heartbeat Analysis + UI-only Range overlay */}
+                    {/* Heartbeat Analysis + Enhanced Controls */}
                     <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]">
                       <div className="px-5 py-4 border-b border-[#15171a] flex items-center justify-between">
-                        <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
-                          HEARTBEAT_ANALYSIS [{(monitor as any).recent_heartbeats?.length ?? 0}]
+                        <div className="flex items-center gap-4">
+                          <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
+                            HEARTBEAT_ANALYSIS [{(monitor as any).recent_heartbeats?.length ?? 0}]
+                          </div>
+                          <div className="text-[#5f636a] text-[10px] tracking-[0.26em] uppercase">
+                            RANGE: {RANGE_UI[range].label} / {RANGE_UI[range].hint}
+                          </div>
                         </div>
-                        <div className="text-[#5f636a] text-[10px] tracking-[0.26em] uppercase">
-                          RANGE: {RANGE_UI[range].label} / {RANGE_UI[range].hint}
+                        
+                        <div className="flex items-center gap-4">
+                          <GraphRangeTabs value={graphRange} onChange={setGraphRange} />
                         </div>
                       </div>
 
                       <div className="p-5 relative">
-                        {/* Chart (still uses the same 50 events) */}
-                        <div className={cn(range !== "TODAY" && "opacity-40 blur-[0.2px]")}>
+                        {/* Chart with graph range overlay */}
+                        <div className={cn(
+                          "transition-all duration-300",
+                          (range !== "TODAY" || graphRange !== "24H") && "opacity-40 blur-[0.2px]"
+                        )}>
                           <HeartbeatChart 
                             heartbeats={(monitor as any).recent_heartbeats || []} 
                             monitorType={monitor.monitor_type}
+                            showTimeRangeSelector={false}
                           />
                         </div>
 
-                        {/* Overlay for WEEK/MONTH (UI-only, no backend changes) */}
-                        {range !== "TODAY" && (
+                        {/* Enhanced overlay for extended ranges */}
+                        {(range !== "TODAY" || graphRange !== "24H") && (
                           <div className="absolute inset-0 flex items-center justify-center p-8">
-                            <div className="max-w-[560px] border border-[#2a2d31] bg-[rgba(0,0,0,0.55)] backdrop-blur-sm p-6">
-                              <div className="text-[#f2d48a] text-[10px] tracking-[0.28em] uppercase">
-                                INSUFFICIENT_TELEMETRY
+                            <div className="max-w-[600px] border border-[#f2d48a]/30 bg-[rgba(0,0,0,0.75)] backdrop-blur-md p-8">
+                              <div className="flex items-center gap-3 mb-4">
+                                <div className="w-3 h-3 rounded-full bg-[#f2d48a] animate-pulse"></div>
+                                <div className="text-[#f2d48a] text-[11px] tracking-[0.28em] uppercase font-bold">
+                                  EXTENDED_TELEMETRY_REQUIRED
+                                </div>
                               </div>
-                              <div className="mt-3 text-[#d6d7da] text-[12px] tracking-[0.18em] uppercase">
-                                WEEK/MONTH VIEW IS UI-READY
+                              
+                              <div className="text-[#d6d7da] text-[13px] tracking-[0.18em] uppercase mb-4">
+                                {graphRange !== "24H" ? `${graphRange} TIMELINE VIEW` : `${range} ANALYSIS VIEW`}
                               </div>
-                              <div className="mt-3 text-[#6f6f6f] text-[11px] leading-relaxed">
-                                Your backend currently returns only the last 50 heartbeats. To render a true{" "}
-                                <span className="text-[#d6d7da]">7D</span> or{" "}
-                                <span className="text-[#d6d7da]">30D</span> timeline, the API must provide older
-                                heartbeats (or aggregated metrics). The UI is complete; data expansion is disabled as requested.
+                              
+                              <div className="text-[#6f6f6f] text-[11px] leading-relaxed mb-6">
+                                Your backend currently provides the last 50 heartbeats (~24H data). To display{" "}
+                                <span className="text-[#f2d48a] font-bold">
+                                  {graphRange !== "24H" ? graphRange : range}
+                                </span>{" "}
+                                analytics, the API needs historical data aggregation or extended heartbeat retention.
                               </div>
 
-                              <div className="mt-5 flex items-center gap-3">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-[10px] font-mono">
+                                <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
+                                  <div className="text-[#5f636a] mb-1 tracking-[0.26em] uppercase">CURRENT:</div>
+                                  <div className="text-[#d6d7da]">include_heartbeats=50</div>
+                                  <div className="text-[#d6d7da]">~24H coverage</div>
+                                </div>
+                                <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
+                                  <div className="text-[#5f636a] mb-1 tracking-[0.26em] uppercase">NEEDED:</div>
+                                  <div className="text-[#f2d48a]">Historical aggregation</div>
+                                  <div className="text-[#f2d48a]">Extended retention</div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3">
                                 <button
-                                  onClick={() => setRange("TODAY")}
+                                  onClick={() => {
+                                    setRange("TODAY");
+                                    setGraphRange("24H");
+                                  }}
                                   className="h-9 px-5 bg-[#f2d48a] text-[#0b0c0e] text-[10px] tracking-[0.26em] uppercase font-bold hover:bg-[#d6d7da] transition"
                                 >
-                                  RETURN_TO_TODAY
+                                  RETURN_TO_24H
                                 </button>
                                 <div className="text-[#5f636a] text-[10px] tracking-[0.26em] uppercase">
-                                  CURRENT: include_heartbeats=50
+                                  UI_READY • BACKEND_EXPANSION_DISABLED
                                 </div>
                               </div>
                             </div>
@@ -890,6 +1054,16 @@ export default function MonitorDetailPage() {
           <DashboardFooter />
         </div>
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && monitor && (
+        <ShareMonitorModal
+          isOpen={showShareModal}
+          monitorId={monitorId || ""}
+          monitorName={monitor.friendly_name}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 }

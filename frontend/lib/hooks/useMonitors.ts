@@ -77,6 +77,14 @@ export function useMonitors(autoRefresh = true, refreshInterval = 30000) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [autoRefresh, fetchMonitors]);
 
+  const updateMonitor = useCallback((updatedMonitor: MonitorResponse) => {
+    setMonitors(prevMonitors => 
+      prevMonitors.map(monitor => 
+        monitor.id === updatedMonitor.id ? updatedMonitor : monitor
+      )
+    );
+  }, []);
+
   return { 
     monitors, 
     loading, 
@@ -84,6 +92,7 @@ export function useMonitors(autoRefresh = true, refreshInterval = 30000) {
     total, 
     isRefreshing,
     lastUpdated,
-    refetch: (page?: number, perPage?: number) => fetchMonitors(page, perPage, false)
+    refetch: (page?: number, perPage?: number) => fetchMonitors(page, perPage, false),
+    updateMonitor
   };
 }

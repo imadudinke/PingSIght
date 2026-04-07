@@ -24,3 +24,6 @@ class User(Base):
     notification_settings: Mapped["UserNotificationSettings"] = relationship(
         "UserNotificationSettings", back_populates="user", uselist=False
     )
+    status_pages: Mapped[list["StatusPage"]] = relationship(
+        "StatusPage", back_populates="user"
+    )

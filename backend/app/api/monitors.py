@@ -909,3 +909,80 @@ async def get_shared_monitor(
     }
     
     return response_data
+
+
+@router.get("/public/{monitor_id}", response_model=MonitorDetailResponse)
+async def get_public_monitor(
+    monitor_id: str,
+    include_heartbeats: int = Query(default=50, le=200),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get monitor details for public sharing (simplified endpoint for demo purposes)"""
+    result = await db.execute(
+        select(Monitor).where(Monitor.id == monitor_id)
+    )
+    monitor = result.scalar_one_or_none()
+    
+    if not monitor:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+    
+    # For demo purposes, allow public access to any monitor
+    # In production, you'd want proper access controls here
+    
+    # Get recent heartbeats
+    heartbeats_result = await db.execute(
+        select(Heartbeat)
+        .where(Heartbeat.monitor_id == monitor.id)
+        .order_by(Heartbeat.created_at.desc())
+        .limit(include_heartbeats)
+    )
+    heartbeats = heartbeats_result.scalars().all()
+    
+    # Calculate stats
+    stats = await MonitorService.calculate_monitor_stats(db, monitor.id)
+    
+    # Build response (same structure as the authenticated endpoint)
+    response_data = {
+        "id": str(monitor.id),
+        "user_id": str(monitor.user_id),
+        "url": monitor.url,
+        "friendly_name": monitor.name,
+        "interval_seconds": monitor.interval_seconds,
+        "status": monitor.last_status,
+        "is_active": monitor.is_active,
+        "is_maintenance": monitor.is_maintenance,
+        "last_checked": heartbeats[0].created_at.isoformat() if heartbeats else None,
+        "created_at": monitor.created_at.isoformat(),
+        "monitor_type": monitor.monitor_type,
+        "steps": monitor.steps,
+        "ssl_status": monitor.ssl_status,
+        "ssl_expiry_date": monitor.ssl_expiry_date.isoformat() if monitor.ssl_expiry_date else None,
+        "ssl_days_remaining": monitor.ssl_days_remaining,
+        "domain_status": monitor.domain_status,
+        "domain_expiry_date": monitor.domain_expiry_date.isoformat() if monitor.domain_expiry_date else None,
+        "domain_days_remaining": monitor.domain_days_remaining,
+        "domain_last_checked": monitor.domain_last_checked.isoformat() if monitor.domain_last_checked else None,
+        "last_ping_received": monitor.last_ping_received.isoformat() if monitor.last_ping_received else None,
+        "heartbeat_url": _heartbeat_url_for_monitor(monitor),
+        "recent_heartbeats": [
+            {
+                "id": hb.id,
+                "status_code": hb.status_code,
+                "latency_ms": hb.latency_ms,
+                "tcp_connect_ms": hb.tcp_connect_ms,
+                "tls_handshake_ms": hb.tls_handshake_ms,
+                "ttfb_ms": hb.ttfb_ms,
+                "timing_details": hb.timing_details,
+                "step_results": hb.step_results,
+                "is_anomaly": hb.is_anomaly,
+                "error_message": hb.error_message,
+                "created_at": hb.created_at.isoformat()
+            }
+            for hb in heartbeats
+        ],
+        "uptime_percentage": stats.uptime_percentage,
+        "average_latency": stats.average_latency,
+        "total_checks": stats.total_checks
+    }
+    
+    return response_data

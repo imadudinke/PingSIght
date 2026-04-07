@@ -17,9 +17,10 @@ interface Heartbeat {
 interface HeartbeatChartProps {
   heartbeats: Heartbeat[];
   monitorType?: string; // 'heartbeat' or 'simple'/'scenario'
+  showTimeRangeSelector?: boolean; // New prop to control internal time range selector
 }
 
-export function HeartbeatChart({ heartbeats, monitorType = "simple" }: HeartbeatChartProps) {
+export function HeartbeatChart({ heartbeats, monitorType = "simple", showTimeRangeSelector = true }: HeartbeatChartProps) {
   const [timeRange, setTimeRange] = useState<"all" | "24h" | "7d">("all");
   const isHeartbeatMonitor = monitorType === "heartbeat";
 
@@ -179,28 +180,30 @@ export function HeartbeatChart({ heartbeats, monitorType = "simple" }: Heartbeat
   return (
     <div className="space-y-6">
       {/* Header with Time Range Selector */}
-      <div className="flex items-center justify-between">
-        <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
-          {isHeartbeatMonitor ? "PING_TIMELINE" : "LATENCY_TIMELINE"}
+      {showTimeRangeSelector && (
+        <div className="flex items-center justify-between">
+          <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
+            {isHeartbeatMonitor ? "PING_TIMELINE" : "LATENCY_TIMELINE"}
+          </div>
+          <div className="flex items-center gap-2">
+            {(["all", "24h", "7d"] as const).map((range) => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range)}
+                className={cn(
+                  "h-8 px-3 text-[10px] tracking-[0.26em] uppercase transition",
+                  "border border-[#2a2d31]",
+                  timeRange === range
+                    ? "bg-[rgba(242,212,138,0.08)] text-[#f2d48a] border-[#f2d48a]"
+                    : "bg-[rgba(255,255,255,0.02)] text-[#6f6f6f] hover:text-[#d6d7da] hover:border-[#3a3d42]"
+                )}
+              >
+                {range === "all" ? "ALL" : range.toUpperCase()}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {(["all", "24h", "7d"] as const).map((range) => (
-            <button
-              key={range}
-              onClick={() => setTimeRange(range)}
-              className={cn(
-                "h-8 px-3 text-[10px] tracking-[0.26em] uppercase transition",
-                "border border-[#2a2d31]",
-                timeRange === range
-                  ? "bg-[rgba(242,212,138,0.08)] text-[#f2d48a] border-[#f2d48a]"
-                  : "bg-[rgba(255,255,255,0.02)] text-[#6f6f6f] hover:text-[#d6d7da] hover:border-[#3a3d42]"
-              )}
-            >
-              {range === "all" ? "ALL" : range.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* Summary Stats */}
       {isHeartbeatMonitor ? (

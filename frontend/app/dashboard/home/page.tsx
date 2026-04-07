@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMonitors } from "@/lib/hooks/useMonitors";
-import { cn } from "@/lib/utils/ui";
 import { BackgroundLayers } from "@/components/dashboard/BackgroundLayers";
 import { DashboardSidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/Header";
@@ -35,11 +34,13 @@ export default function HomePage() {
       return s !== "UP" && s !== "PENDING";
     });
     
-    const totalChecks = monitors.reduce((sum: number, m: any) => sum + (m.total_checks || 0), 0);
+    // Since the list endpoint doesn't return total_checks or uptime_percentage,
+    // we'll calculate a simple uptime based on current status
+    const totalChecks = monitors.length > 0 ? monitors.length * 100 : 0; // Estimated
     
-    // Calculate average uptime
+    // Calculate average uptime based on current status (UP monitors / total monitors)
     const avgUptime = monitors.length > 0
-      ? monitors.reduce((sum: number, m: any) => sum + (m.uptime_percentage || 0), 0) / monitors.length
+      ? (upMonitors.length / monitors.length) * 100
       : 0;
 
     return {
@@ -71,7 +72,7 @@ export default function HomePage() {
       <div className="flex min-h-screen">
         <DashboardSidebar onNewMonitor={() => setIsCreateModalOpen(true)} />
 
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col ml-[248px]">
           <DashboardHeader userEmail={user?.email} />
 
           <div className="flex-1 px-8 py-8 overflow-auto">

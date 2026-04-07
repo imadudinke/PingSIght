@@ -12,6 +12,7 @@ from .api.monitors import router as monitors_router
 from .api.heartbeats import router as heartbeats_router
 from .api.status import router as status_router
 from .api.notifications import router as notifications_router
+from .api.status_pages import router as status_pages_router
 from .core.security import get_current_user
 from .core.config import get_settings
 from .models.user import User
@@ -61,6 +62,7 @@ app.include_router(monitors_router, tags=["monitors"])
 app.include_router(heartbeats_router, prefix="/api", tags=["heartbeats"])
 app.include_router(status_router, tags=["status"])
 app.include_router(notifications_router, prefix="/api", tags=["notifications"])
+app.include_router(status_pages_router, prefix="/api", tags=["status_pages"])
 
 
 @app.on_event("startup")

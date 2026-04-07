@@ -78,6 +78,7 @@ export function DashboardSidebar({ onNewMonitor }: { onNewMonitor?: () => void }
   const isHome = pathname === "/dashboard" || pathname === "/dashboard/home";
   const isMonitors = pathname?.startsWith("/dashboard/monitors") && !pathname?.includes("/dashboard/monitors/");
   const isHeartbeats = pathname?.startsWith("/dashboard/heartbeats");
+  const isStatusPages = pathname?.startsWith("/dashboard/status-pages");
   const isSettings = pathname?.startsWith("/dashboard/settings");
   const isMonitorDetail = pathname?.includes("/dashboard/monitors/") && pathname !== "/dashboard/monitors";
 
@@ -95,7 +96,7 @@ export function DashboardSidebar({ onNewMonitor }: { onNewMonitor?: () => void }
   };
 
   return (
-    <aside className="w-[248px] border-r border-[#1b1d20] bg-[rgba(10,10,11,0.35)] backdrop-blur-[2px] flex flex-col">
+    <aside className="fixed left-0 top-0 bottom-0 w-[248px] border-r border-[#1b1d20] bg-[rgba(10,10,11,0.35)] backdrop-blur-[2px] flex flex-col z-30">
       <div className="px-6 pt-6 pb-5">
         <button 
           onClick={() => router.push("/dashboard/home")}
@@ -132,6 +133,12 @@ export function DashboardSidebar({ onNewMonitor }: { onNewMonitor?: () => void }
           icon="heart" 
           label="HEARTBEATS" 
           href="/dashboard/heartbeats"
+        />
+        <SidebarItem 
+          active={isStatusPages} 
+          icon="page" 
+          label="STATUS_PAGES" 
+          href="/dashboard/status-pages"
         />
         <SidebarItem 
           active={isSettings} 

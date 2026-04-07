@@ -50,6 +50,40 @@ class NotificationService:
             return False
     
     @staticmethod
+    async def send_slack_webhook(webhook_url: str, text: str, blocks: Optional[list] = None) -> bool:
+        """
+        Send a message to Slack via webhook
+        
+        Args:
+            webhook_url: Slack webhook URL
+            text: Message text (fallback for notifications)
+            blocks: Optional Slack Block Kit blocks for rich formatting
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not webhook_url:
+            logger.warning("Slack webhook URL not provided")
+            return False
+        
+        try:
+            payload = {"text": text}
+            if blocks:
+                payload["blocks"] = blocks
+            
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(webhook_url, json=payload)
+                response.raise_for_status()
+                logger.info(f"Slack notification sent successfully")
+                return True
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to send Slack notification: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error sending Slack notification: {str(e)}")
+            return False
+    
+    @staticmethod
     async def get_user_settings(db: AsyncSession, user_id: str) -> Optional[UserNotificationSettings]:
         """Get user notification settings"""
         result = await db.execute(
@@ -200,6 +234,175 @@ class NotificationService:
             }
         }
     
+    # Slack Block Kit formatters
+    @staticmethod
+    def create_monitor_down_blocks(monitor: Monitor, error_message: Optional[str] = None) -> list:
+        """Create Slack blocks for monitor down alert"""
+        return [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": f"🔴 Monitor DOWN: {monitor.name}"
+                }
+            },
+            {
+                "type": "section",
+                "fields": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*URL:*\n{monitor.url}"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Monitor Type:*\n{monitor.monitor_type.upper()}"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Check Interval:*\n{monitor.interval_seconds}s"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Error:*\n{error_message or 'Connection failed'}"
+                    }
+                ]
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"PingSight Monitoring • {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                    }
+                ]
+            }
+        ]
+    
+    @staticmethod
+    def create_monitor_recovery_blocks(monitor: Monitor, downtime_duration: Optional[str] = None) -> list:
+        """Create Slack blocks for monitor recovery alert"""
+        fields = [
+            {
+                "type": "mrkdwn",
+                "text": f"*URL:*\n{monitor.url}"
+            },
+            {
+                "type": "mrkdwn",
+                "text": f"*Monitor Type:*\n{monitor.monitor_type.upper()}"
+            },
+            {
+                "type": "mrkdwn",
+                "text": f"*Check Interval:*\n{monitor.interval_seconds}s"
+            }
+        ]
+        
+        if downtime_duration:
+            fields.append({
+                "type": "mrkdwn",
+                "text": f"*Downtime Duration:*\n{downtime_duration}"
+            })
+        
+        return [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": f"✅ Monitor RECOVERED: {monitor.name}"
+                }
+            },
+            {
+                "type": "section",
+                "fields": fields
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"PingSight Monitoring • {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                    }
+                ]
+            }
+        ]
+    
+    @staticmethod
+    def create_ssl_expiry_blocks(monitor: Monitor, days_remaining: int) -> list:
+        """Create Slack blocks for SSL expiry warning"""
+        return [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": f"⚠️ SSL Certificate Expiring: {monitor.name}"
+                }
+            },
+            {
+                "type": "section",
+                "fields": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*URL:*\n{monitor.url}"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Days Remaining:*\n{days_remaining}"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Expiry Date:*\n{monitor.ssl_expiry_date.strftime('%Y-%m-%d') if monitor.ssl_expiry_date else 'Unknown'}"
+                    }
+                ]
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"PingSight Monitoring • {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                    }
+                ]
+            }
+        ]
+    
+    @staticmethod
+    def create_domain_expiry_blocks(monitor: Monitor, days_remaining: int) -> list:
+        """Create Slack blocks for domain expiry warning"""
+        return [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": f"⚠️ Domain Expiring: {monitor.name}"
+                }
+            },
+            {
+                "type": "section",
+                "fields": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*URL:*\n{monitor.url}"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Days Remaining:*\n{days_remaining}"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Expiry Date:*\n{monitor.domain_expiry_date.strftime('%Y-%m-%d') if monitor.domain_expiry_date else 'Unknown'}"
+                    }
+                ]
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"PingSight Monitoring • {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                    }
+                ]
+            }
+        ]
+    
     @staticmethod
     async def send_monitor_down_alert(
         db: AsyncSession,
@@ -212,15 +415,29 @@ class NotificationService:
         if not settings or not settings.alert_on_down:
             return False
         
+        success = False
+        
+        # Send Discord notification
         if settings.discord_enabled and settings.discord_webhook_url:
             embed = NotificationService.create_monitor_down_embed(monitor, error_message)
-            return await NotificationService.send_discord_webhook(
+            discord_success = await NotificationService.send_discord_webhook(
                 settings.discord_webhook_url,
                 f"🔴 **ALERT**: Monitor `{monitor.name}` is DOWN!",
                 embed
             )
+            success = success or discord_success
         
-        return False
+        # Send Slack notification
+        if settings.slack_enabled and settings.slack_webhook_url:
+            blocks = NotificationService.create_monitor_down_blocks(monitor, error_message)
+            slack_success = await NotificationService.send_slack_webhook(
+                settings.slack_webhook_url,
+                f"🔴 ALERT: Monitor {monitor.name} is DOWN!",
+                blocks
+            )
+            success = success or slack_success
+        
+        return success
     
     @staticmethod
     async def send_monitor_recovery_alert(
@@ -234,15 +451,29 @@ class NotificationService:
         if not settings or not settings.alert_on_recovery:
             return False
         
+        success = False
+        
+        # Send Discord notification
         if settings.discord_enabled and settings.discord_webhook_url:
             embed = NotificationService.create_monitor_recovery_embed(monitor, downtime_duration)
-            return await NotificationService.send_discord_webhook(
+            discord_success = await NotificationService.send_discord_webhook(
                 settings.discord_webhook_url,
                 f"✅ **RECOVERED**: Monitor `{monitor.name}` is back online!",
                 embed
             )
+            success = success or discord_success
         
-        return False
+        # Send Slack notification
+        if settings.slack_enabled and settings.slack_webhook_url:
+            blocks = NotificationService.create_monitor_recovery_blocks(monitor, downtime_duration)
+            slack_success = await NotificationService.send_slack_webhook(
+                settings.slack_webhook_url,
+                f"✅ RECOVERED: Monitor {monitor.name} is back online!",
+                blocks
+            )
+            success = success or slack_success
+        
+        return success
     
     @staticmethod
     async def send_ssl_expiry_alert(
@@ -260,15 +491,29 @@ class NotificationService:
         if days_remaining != settings.ssl_expiry_alert_days:
             return False
         
+        success = False
+        
+        # Send Discord notification
         if settings.discord_enabled and settings.discord_webhook_url:
             embed = NotificationService.create_ssl_expiry_embed(monitor, days_remaining)
-            return await NotificationService.send_discord_webhook(
+            discord_success = await NotificationService.send_discord_webhook(
                 settings.discord_webhook_url,
                 f"⚠️ **SSL WARNING**: Certificate for `{monitor.name}` expires in {days_remaining} days!",
                 embed
             )
+            success = success or discord_success
         
-        return False
+        # Send Slack notification
+        if settings.slack_enabled and settings.slack_webhook_url:
+            blocks = NotificationService.create_ssl_expiry_blocks(monitor, days_remaining)
+            slack_success = await NotificationService.send_slack_webhook(
+                settings.slack_webhook_url,
+                f"⚠️ SSL WARNING: Certificate for {monitor.name} expires in {days_remaining} days!",
+                blocks
+            )
+            success = success or slack_success
+        
+        return success
     
     @staticmethod
     async def send_domain_expiry_alert(
@@ -286,12 +531,26 @@ class NotificationService:
         if days_remaining != settings.domain_expiry_alert_days:
             return False
         
+        success = False
+        
+        # Send Discord notification
         if settings.discord_enabled and settings.discord_webhook_url:
             embed = NotificationService.create_domain_expiry_embed(monitor, days_remaining)
-            return await NotificationService.send_discord_webhook(
+            discord_success = await NotificationService.send_discord_webhook(
                 settings.discord_webhook_url,
                 f"⚠️ **DOMAIN WARNING**: Domain for `{monitor.name}` expires in {days_remaining} days!",
                 embed
             )
+            success = success or discord_success
         
-        return False
+        # Send Slack notification
+        if settings.slack_enabled and settings.slack_webhook_url:
+            blocks = NotificationService.create_domain_expiry_blocks(monitor, days_remaining)
+            slack_success = await NotificationService.send_slack_webhook(
+                settings.slack_webhook_url,
+                f"⚠️ DOMAIN WARNING: Domain for {monitor.name} expires in {days_remaining} days!",
+                blocks
+            )
+            success = success or slack_success
+        
+        return success

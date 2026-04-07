@@ -19,12 +19,13 @@ import { EditMonitorModal } from "@/components/monitors/EditMonitorModal";
 import { DeleteConfirmModal } from "@/components/monitors/DeleteConfirmModal";
 import { ShareMonitorModal } from "@/components/monitors/ShareMonitorModal";
 import { MonitorActionsMenu } from "@/components/monitors/MonitorActionsMenu";
+import { MonitorRowSkeleton } from "@/components/ui/Skeleton";
 import type { MonitorResponse } from "@/lib/api/types.gen";
 
 export default function HeartbeatsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading, user } = useAuth();
-  const { monitors, loading: loadingMonitors, isRefreshing, lastUpdated, refetch } = useMonitors();
+  const { monitors, loading: loadingMonitors, isRefreshing, lastUpdated, refetch, updateMonitor } = useMonitors();
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -96,7 +97,7 @@ export default function HeartbeatsPage() {
       <div className="flex min-h-screen">
         <DashboardSidebar onNewMonitor={() => setIsCreateModalOpen(true)} />
 
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col ml-[248px]">
           <DashboardHeader userEmail={user?.email} />
 
           <div className="flex-1 px-8 py-8 overflow-auto">
@@ -227,8 +228,36 @@ export default function HeartbeatsPage() {
                 </div>
                 <Panel className="overflow-hidden">
                   {loadingMonitors ? (
-                    <div className="py-14 text-center text-[#6f6f6f] text-[11px] tracking-[0.28em] uppercase">
-                      LOADING_HEARTBEATS...
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-[#15171a]">
+                            <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                              MONITOR
+                            </th>
+                            <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                              STATUS
+                            </th>
+                            <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                              UPTIME
+                            </th>
+                            <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                              LATENCY
+                            </th>
+                            <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                              LAST_CHECK
+                            </th>
+                            <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                              ACTIONS
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Array.from({ length: 6 }).map((_, i) => (
+                            <MonitorRowSkeleton key={i} />
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   ) : (
                     <>
@@ -257,7 +286,7 @@ export default function HeartbeatsPage() {
                                     setSelectedMonitor(m);
                                     setIsShareModalOpen(true);
                                   }}
-                                  onMaintenanceToggle={() => refetch()}
+                                  onMaintenanceToggle={(updatedMonitor) => updateMonitor(updatedMonitor)}
                                 />
                               </div>
                             </div>
