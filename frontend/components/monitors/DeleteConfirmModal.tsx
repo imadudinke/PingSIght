@@ -32,7 +32,7 @@ export function DeleteConfirmModal({ isOpen, monitor, onClose, onSuccess }: Dele
         path: { monitor_id: monitor.id }
       });
 
-      if (response.response.ok) {
+      if (response?.response?.ok) {
         onSuccess();
         handleClose();
       } else {

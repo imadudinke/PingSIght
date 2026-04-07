@@ -15,7 +15,7 @@ export default function AuthCallback() {
       try {
         const response = await getCurrentUserInfoAuthMeGet();
 
-        if (response.response.ok) {
+        if (response?.response?.ok) {
           setStatus("Success! Redirecting...");
           router.push("/dashboard");
         } else {

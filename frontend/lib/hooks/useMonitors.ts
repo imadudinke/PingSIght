@@ -24,7 +24,7 @@ export function useMonitors(autoRefresh = true, refreshInterval = 30000) {
         query: { page, per_page: perPage }
       });
 
-      if (response.response.ok && response.data) {
+      if (response?.response?.ok && response.data) {
         setMonitors(response.data.monitors);
         setTotal(response.data.total);
         setError(null);

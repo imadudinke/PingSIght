@@ -219,3 +219,31 @@ class MonitorList(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+class ShareMonitorRequest(BaseModel):
+    """Request model for enabling monitor sharing with expiration and password"""
+    expires_in_hours: Optional[int] = Field(None, ge=1, le=8760, description="Hours until share expires (max 1 year)")
+    password: Optional[str] = Field(None, min_length=4, max_length=50, description="Optional password to protect the share")
+
+
+class ShareMonitorResponse(BaseModel):
+    """Response model for monitor sharing"""
+    success: bool
+    share_token: str
+    share_url: str
+    is_public: bool
+    expires_at: Optional[datetime] = None
+    has_password: bool = False
+
+
+class ShareAccessRequest(BaseModel):
+    """Request model for accessing a password-protected shared monitor"""
+    password: Optional[str] = Field(None, description="Password for protected share")
+
+
+class ShareAccessResponse(BaseModel):
+    """Response model for share access validation"""
+    success: bool
+    message: str
+    requires_password: bool = False

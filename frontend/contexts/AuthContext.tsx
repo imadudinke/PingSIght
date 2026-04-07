@@ -42,13 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await getCurrentUserInfoAuthMeGet();
 
-      if (response.response.ok && response.data) {
+      if (response?.response?.ok && response.data) {
         setUser(response.data as User);
-      } else if (response.response.status === 401) {
+      } else if (response?.response?.status === 401) {
         console.log('Unauthorized');
         setUser(null);
       } else {
-        console.error('Failed to fetch user, status:', response.response.status);
+        console.error('Failed to fetch user, status:', response?.response?.status);
         setUser(null);
       }
     } catch (error) {

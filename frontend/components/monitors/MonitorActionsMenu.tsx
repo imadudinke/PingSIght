@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { 
   enableMaintenanceMonitorsMonitorIdMaintenancePut,
   disableMaintenanceMonitorsMonitorIdMaintenanceDelete 
@@ -24,8 +25,24 @@ export function MonitorActionsMenu({
 }: MonitorActionsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.right + window.scrollX - 224 // 224px = w-56
+      });
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -95,8 +112,15 @@ export function MonitorActionsMenu({
       </button>
 
       {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="absolute right-0 mt-1 w-56 bg-[#0f1113] border border-[#1f2227] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+      {mounted && isOpen && createPortal(
+        <div 
+          ref={menuRef}
+          className="fixed w-56 bg-[#0f1113] border border-[#1f2227] shadow-2xl z-[10000] animate-in fade-in slide-in-from-top-2 duration-200"
+          style={{
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`
+          }}
+        >
           {/* Edit */}
           <button
             onClick={(e) => {
@@ -169,7 +193,8 @@ export function MonitorActionsMenu({
             </svg>
             DELETE_MONITOR
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -3,6 +3,7 @@ from __future__ import annotations
 import secrets
 from uuid import uuid4
 from datetime import datetime
+import bcrypt
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -48,6 +49,8 @@ class Monitor(Base):
     # Public sharing fields
     share_token: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True, index=True)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    share_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    share_password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
@@ -68,3 +71,23 @@ class Monitor(Base):
         """Generate a unique share token for public access"""
         self.share_token = secrets.token_urlsafe(32)
         return self.share_token
+
+    def set_share_password(self, password: str | None) -> None:
+        """Set the share password (hashed)"""
+        if password:
+            salt = bcrypt.gensalt()
+            self.share_password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+        else:
+            self.share_password_hash = None
+
+    def verify_share_password(self, password: str) -> bool:
+        """Verify the share password"""
+        if not self.share_password_hash:
+            return True  # No password set
+        return bcrypt.checkpw(password.encode('utf-8'), self.share_password_hash.encode('utf-8'))
+
+    def is_share_expired(self) -> bool:
+        """Check if the share link has expired"""
+        if not self.share_expires_at:
+            return False  # No expiration set
+        return datetime.utcnow().replace(tzinfo=self.share_expires_at.tzinfo) > self.share_expires_at

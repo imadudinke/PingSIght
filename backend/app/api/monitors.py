@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional
-from datetime import timezone
+from datetime import datetime, timezone, timedelta
 
 from app.db.session import get_db
 from app.models.monitor import Monitor
@@ -17,7 +17,11 @@ from app.schemas.monitor import (
     MonitorResponse,
     MonitorDetailResponse,
     MonitorUpdate,
-    MonitorList
+    MonitorList,
+    ShareMonitorRequest,
+    ShareMonitorResponse,
+    ShareAccessRequest,
+    ShareAccessResponse
 )
 from app.core.security import get_current_user
 from app.core.config import get_settings
@@ -697,13 +701,14 @@ async def get_monitor_timing_stats(
     }
 
 
-@router.post("/{monitor_id}/share")
+@router.post("/{monitor_id}/share", response_model=ShareMonitorResponse)
 async def enable_monitor_sharing(
     monitor_id: str,
+    request: ShareMonitorRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Enable public sharing for a monitor and generate share token"""
+    """Enable public sharing for a monitor with optional expiration and password"""
     result = await db.execute(
         select(Monitor).where(
             and_(Monitor.id == monitor_id, Monitor.user_id == current_user.id)
@@ -718,6 +723,15 @@ async def enable_monitor_sharing(
     if not monitor.share_token:
         monitor.generate_share_token()
     
+    # Set expiration if provided
+    if request.expires_in_hours:
+        monitor.share_expires_at = datetime.utcnow().replace(tzinfo=timezone.utc) + timedelta(hours=request.expires_in_hours)
+    else:
+        monitor.share_expires_at = None
+    
+    # Set password if provided
+    monitor.set_share_password(request.password)
+    
     # Enable public sharing
     monitor.is_public = True
     
@@ -727,12 +741,14 @@ async def enable_monitor_sharing(
     # Build share URL
     share_url = f"{settings.frontend_url}/share/{monitor.share_token}"
     
-    return {
-        "success": True,
-        "share_token": monitor.share_token,
-        "share_url": share_url,
-        "is_public": monitor.is_public
-    }
+    return ShareMonitorResponse(
+        success=True,
+        share_token=monitor.share_token,
+        share_url=share_url,
+        is_public=monitor.is_public,
+        expires_at=monitor.share_expires_at,
+        has_password=bool(monitor.share_password_hash)
+    )
 
 
 @router.delete("/{monitor_id}/share")
@@ -752,8 +768,10 @@ async def disable_monitor_sharing(
     if not monitor:
         raise HTTPException(status_code=404, detail="Monitor not found")
     
-    # Disable public sharing
+    # Disable public sharing and clear expiration/password
     monitor.is_public = False
+    monitor.share_expires_at = None
+    monitor.share_password_hash = None
     
     await db.commit()
     
@@ -763,9 +781,54 @@ async def disable_monitor_sharing(
     }
 
 
+@router.post("/shared/{share_token}/access", response_model=ShareAccessResponse)
+async def validate_share_access(
+    share_token: str,
+    request: ShareAccessRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Validate access to a shared monitor (check password and expiration)"""
+    result = await db.execute(
+        select(Monitor).where(
+            and_(Monitor.share_token == share_token, Monitor.is_public == True)
+        )
+    )
+    monitor = result.scalar_one_or_none()
+    
+    if not monitor:
+        raise HTTPException(status_code=404, detail="Shared monitor not found or sharing is disabled")
+    
+    # Check if expired
+    if monitor.is_share_expired():
+        raise HTTPException(status_code=410, detail="Share link has expired")
+    
+    # Check password if required
+    if monitor.share_password_hash:
+        if not request.password:
+            return ShareAccessResponse(
+                success=False,
+                message="Password required",
+                requires_password=True
+            )
+        
+        if not monitor.verify_share_password(request.password):
+            return ShareAccessResponse(
+                success=False,
+                message="Invalid password",
+                requires_password=True
+            )
+    
+    return ShareAccessResponse(
+        success=True,
+        message="Access granted",
+        requires_password=False
+    )
+
+
 @router.get("/shared/{share_token}", response_model=MonitorDetailResponse)
 async def get_shared_monitor(
     share_token: str,
+    password: Optional[str] = Query(None, description="Password for protected shares"),
     include_heartbeats: int = Query(default=50, le=200),
     db: AsyncSession = Depends(get_db)
 ):
@@ -779,6 +842,15 @@ async def get_shared_monitor(
     
     if not monitor:
         raise HTTPException(status_code=404, detail="Shared monitor not found or sharing is disabled")
+    
+    # Check if expired
+    if monitor.is_share_expired():
+        raise HTTPException(status_code=410, detail="Share link has expired")
+    
+    # Check password if required
+    if monitor.share_password_hash:
+        if not password or not monitor.verify_share_password(password):
+            raise HTTPException(status_code=401, detail="Invalid or missing password")
     
     # Get recent heartbeats
     heartbeats_result = await db.execute(

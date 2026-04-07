@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { updateMonitorMonitorsMonitorIdPut } from "@/lib/api/sdk.gen";
 import type { MonitorResponse, MonitorUpdate } from "@/lib/api/types.gen";
 
@@ -17,6 +18,11 @@ export function EditMonitorModal({ isOpen, monitor, onClose, onSuccess }: EditMo
   const [isActive, setIsActive] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (monitor) {
@@ -26,7 +32,18 @@ export function EditMonitorModal({ isOpen, monitor, onClose, onSuccess }: EditMo
     }
   }, [monitor]);
 
-  if (!isOpen || !monitor) return null;
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !monitor || !mounted) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,8 +91,8 @@ export function EditMonitorModal({ isOpen, monitor, onClose, onSuccess }: EditMo
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
       <div className="bg-[#0f1113] border border-[#1f2227] w-full max-w-xl">
         {/* Header */}
         <div className="px-6 py-5 border-b border-[#1f2227] flex items-center justify-between">
@@ -193,4 +210,6 @@ export function EditMonitorModal({ isOpen, monitor, onClose, onSuccess }: EditMo
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

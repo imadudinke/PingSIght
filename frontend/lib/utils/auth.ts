@@ -21,7 +21,7 @@ export function logout() {
 export async function checkAuth(): Promise<boolean> {
   try {
     const response = await getCurrentUserInfoAuthMeGet();
-    return response.response.ok;
+    return response?.response?.ok || false;
   } catch {
     return false;
   }

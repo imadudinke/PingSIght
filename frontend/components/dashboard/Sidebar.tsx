@@ -78,7 +78,6 @@ export function DashboardSidebar({ onNewMonitor }: { onNewMonitor?: () => void }
   const isHome = pathname === "/dashboard" || pathname === "/dashboard/home";
   const isMonitors = pathname?.startsWith("/dashboard/monitors") && !pathname?.includes("/dashboard/monitors/");
   const isHeartbeats = pathname?.startsWith("/dashboard/heartbeats");
-  const isStatusPages = pathname?.startsWith("/dashboard/status-pages");
   const isSettings = pathname?.startsWith("/dashboard/settings");
   const isMonitorDetail = pathname?.includes("/dashboard/monitors/") && pathname !== "/dashboard/monitors";
 
@@ -133,12 +132,6 @@ export function DashboardSidebar({ onNewMonitor }: { onNewMonitor?: () => void }
           icon="heart" 
           label="HEARTBEATS" 
           href="/dashboard/heartbeats"
-        />
-        <SidebarItem 
-          active={isStatusPages} 
-          icon="page" 
-          label="STATUS_PAGES" 
-          onClick={() => showComingSoon("Public Status Pages")}
         />
         <SidebarItem 
           active={isSettings} 
