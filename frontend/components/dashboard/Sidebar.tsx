@@ -261,7 +261,7 @@ export function DashboardSidebar({
               icon="doc" 
               label="DOCS" 
               onClick={() => {
-                window.open("https://github.com/yourusername/pingsight", "_blank");
+                router.push("/docs");
                 handleItemClick();
               }}
             />

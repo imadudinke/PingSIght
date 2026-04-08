@@ -1,9 +1,10 @@
 "use client";
 
-import { MinimalTemplate } from "./MinimalTemplate";
-import { ModernTemplate } from "./ModernTemplate";
 import { CorporateTemplate } from "./CorporateTemplate";
 import { GamingTemplate } from "./GamingTemplate";
+import { MinimalTemplate } from "./MinimalTemplate";
+import { ModernTemplate } from "./ModernTemplate";
+
 
 interface TemplateRendererProps {
   template: string;
