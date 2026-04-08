@@ -220,6 +220,7 @@ export default function NotificationsPage() {
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.push("/");
@@ -342,10 +343,16 @@ export default function NotificationsPage() {
       <div className="min-h-screen text-[#b0b3b8] font-mono">
         <BackgroundLayers />
         <div className="flex min-h-screen">
-          <DashboardSidebar />
-          <div className="flex-1 flex flex-col ml-[248px]">
-            <DashboardHeader userEmail={user?.email} />
-            <div className="flex-1 px-8 py-8 overflow-auto">
+          <DashboardSidebar 
+            isOpen={isMobileMenuOpen}
+            onClose={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="flex-1 flex flex-col lg:ml-[248px]">
+            <DashboardHeader 
+              userEmail={user?.email}
+              onMenuClick={() => setIsMobileMenuOpen(true)}
+            />
+            <div className="flex-1 px-4 md:px-6 lg:px-8 py-6 md:py-8 overflow-auto">
               <Panel className="p-0">
                 <div className="px-6 py-5 border-b border-[#15171a]">
                   <div className="text-[#d6d7da] text-[14px] tracking-[0.18em] uppercase">
@@ -418,17 +425,23 @@ export default function NotificationsPage() {
       <BackgroundLayers />
 
       <div className="flex min-h-screen">
-        <DashboardSidebar />
+        <DashboardSidebar 
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+        />
 
-        <div className="flex-1 flex flex-col ml-[248px]">
-          <DashboardHeader userEmail={user?.email} />
+        <div className="flex-1 flex flex-col lg:ml-[248px]">
+          <DashboardHeader 
+            userEmail={user?.email}
+            onMenuClick={() => setIsMobileMenuOpen(true)}
+          />
 
-          <div className="flex-1 px-8 py-8 overflow-auto max-w-5xl">
-            <div className="mb-6">
-              <div className="text-[#d6d7da] text-[14px] tracking-[0.18em] uppercase">
+          <div className="flex-1 px-4 md:px-6 lg:px-8 py-6 md:py-8 overflow-auto max-w-5xl">
+            <div className="mb-4 md:mb-6">
+              <div className="text-[#d6d7da] text-[12px] md:text-[14px] tracking-[0.18em] uppercase">
                 NOTIFICATIONS
               </div>
-              <div className="mt-1 text-[#6f6f6f] text-[11px] tracking-[0.10em]">
+              <div className="mt-1 text-[#6f6f6f] text-[10px] md:text-[11px] tracking-[0.10em]">
                 DISCORD_AND_SLACK_WEBHOOKS_AND_ALERT_PREFERENCES
               </div>
             </div>

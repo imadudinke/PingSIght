@@ -168,22 +168,32 @@ function DeepTraceWaterfall({ monitor }: { monitor: any }) {
 export default function PublicMonitorPage() {
   const params = useParams();
   const [monitor, setMonitor] = useState<PublicMonitor | null>(null);
+  const [heartbeats, setHeartbeats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [graphRange, setGraphRange] = useState<"24H" | "12H" | "6H">("24H");
+  const [isChartRefreshing, setIsChartRefreshing] = useState(false);
 
   const rawId = (params as any)?.id as string | string[] | undefined;
   const monitorId = Array.isArray(rawId) ? rawId[0] : rawId;
 
-  const fetchMonitorData = async () => {
+  const fetchMonitorData = async (isBackgroundRefresh = false) => {
     if (!monitorId) return;
 
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh) setLoading(true);
+      else setIsChartRefreshing(true);
+      
       setError(null);
 
+      // Calculate heartbeat limit based on graph range
+      const limit = graphRange === "24H" ? 50 : graphRange === "12H" ? 25 : 15;
+
       // This would be a public API endpoint that doesn't require authentication
-      const response = await fetch(`http://localhost:8000/api/monitors/public/${monitorId}`);
+      const response = await fetch(
+        `http://localhost:8000/api/monitors/public/${monitorId}?include_heartbeats=${limit}`
+      );
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -193,17 +203,25 @@ export default function PublicMonitorPage() {
       }
 
       const data = await response.json();
-      setMonitor(data);
+      
+      if (isBackgroundRefresh) {
+        setHeartbeats(data.recent_heartbeats || []);
+      } else {
+        setMonitor(data);
+        setHeartbeats(data.recent_heartbeats || []);
+      }
+      
       setLastUpdated(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
+      setIsChartRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchMonitorData();
+    fetchMonitorData(false);
   }, [monitorId]);
 
   // Auto-refresh every 30 seconds
@@ -212,7 +230,7 @@ export default function PublicMonitorPage() {
 
     const intervalId = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        fetchMonitorData();
+        fetchMonitorData(true);
       }
     }, 30000);
 
@@ -226,10 +244,20 @@ export default function PublicMonitorPage() {
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false, // Use 24-hour format
     });
   };
 
-  const incidents = (monitor?.recent_heartbeats || [])
+  // Filter heartbeats based on selected time range
+  const filteredHeartbeats = heartbeats.filter((hb: any) => {
+    const now = new Date();
+    const hoursToShow = graphRange === "24H" ? 24 : graphRange === "12H" ? 12 : 6;
+    const cutoffTime = new Date(now.getTime() - hoursToShow * 60 * 60 * 1000);
+    const hbTime = new Date(hb.created_at);
+    return hbTime >= cutoffTime;
+  });
+
+  const incidents = filteredHeartbeats
     .filter((hb: any) => hb.status_code >= 400 || hb.error_message)
     .slice(0, 10);
 
@@ -317,7 +345,8 @@ export default function PublicMonitorPage() {
                   UPDATED: {lastUpdated.toLocaleTimeString('en-US', { 
                     hour: '2-digit', 
                     minute: '2-digit',
-                    second: '2-digit'
+                    second: '2-digit',
+                    hour12: false // Use 24-hour format
                   })}
                 </div>
               )}
@@ -354,7 +383,8 @@ export default function PublicMonitorPage() {
                 value={monitor.last_ping_received 
                   ? new Date(monitor.last_ping_received).toLocaleTimeString('en-US', {
                       hour: '2-digit',
-                      minute: '2-digit'
+                      minute: '2-digit',
+                      hour12: false // Use 24-hour format
                     })
                   : "Never"
                 }
@@ -393,24 +423,71 @@ export default function PublicMonitorPage() {
 
           {/* Heartbeat Timeline */}
           <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]">
-            <div className="px-5 py-4 border-b border-[#15171a]">
-              <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
-                24H_HEARTBEAT_TIMELINE [{monitor.recent_heartbeats?.length ?? 0}]
+            <div className="px-5 py-4 border-b border-[#15171a] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-4">
+                <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
+                  HEARTBEAT_TIMELINE
+                </div>
+                <div className="text-[#5f636a] text-[10px] tracking-[0.26em] uppercase">
+                  [{heartbeats.length} EVENTS]
+                </div>
+              </div>
+              
+              {/* Timeline Selector */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="text-[#5f636a] text-[10px] tracking-[0.26em] uppercase">
+                  RANGE
+                </div>
+                <div className="flex border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] divide-x divide-[#2a2d31]">
+                  {(["24H", "12H", "6H"] as const).map((range) => (
+                    <button
+                      key={range}
+                      onClick={() => setGraphRange(range)}
+                      className={cn(
+                        "h-8 px-3 sm:px-4",
+                        "text-[10px] tracking-[0.26em] uppercase font-mono",
+                        graphRange === range
+                          ? "bg-[rgba(255,255,255,0.06)] text-[#f2d48a]"
+                          : "text-[#6f6f6f] hover:text-[#d6d7da] transition"
+                      )}
+                    >
+                      {range}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="p-5">
+            <div className="p-5 relative">
               <HeartbeatChart 
-                heartbeats={monitor.recent_heartbeats || []} 
+                heartbeats={filteredHeartbeats} 
                 monitorType={monitor.monitor_type}
+                showTimeRangeSelector={false}
               />
+              
+              {/* Loading indicator */}
+              {isChartRefreshing && (
+                <div className="absolute top-2 right-2">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-[rgba(0,0,0,0.8)] border border-[#2a2d31] backdrop-blur-sm">
+                    <div className="w-2 h-2 rounded-full bg-[#f2d48a] animate-pulse"></div>
+                    <span className="text-[#f2d48a] text-[9px] tracking-[0.22em] uppercase font-mono">
+                      LOADING_{graphRange}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Recent Incidents */}
           <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]">
             <div className="px-5 py-4 border-b border-[#15171a]">
-              <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
-                RECENT_INCIDENTS
+              <div className="flex items-center justify-between gap-4">
+                <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
+                  INCIDENT_HISTORY
+                </div>
+                <div className="text-[#5f636a] text-[10px] tracking-[0.26em] uppercase">
+                  {incidents.length > 0 ? `${incidents.length} INCIDENTS` : "ALL_CLEAR"}
+                </div>
               </div>
             </div>
 
@@ -446,6 +523,7 @@ export default function PublicMonitorPage() {
                             day: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
+                            hour12: false, // Use 24-hour format
                           })}
                         </td>
                         <td className="px-5 py-3">

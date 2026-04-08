@@ -1,6 +1,9 @@
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import logging
 from datetime import datetime
 
@@ -13,6 +16,7 @@ from .api.heartbeats import router as heartbeats_router
 from .api.status import router as status_router
 from .api.notifications import router as notifications_router
 from .api.status_pages import router as status_pages_router
+from .api.export import router as export_router
 from .core.security import get_current_user
 from .core.config import get_settings
 from .models.user import User
@@ -26,6 +30,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 app = FastAPI(
     title=settings.app_name,
@@ -45,11 +52,26 @@ app = FastAPI(
     ]
 )
 
-# Add CORS middleware
-# For development, allow all origins. In production, restrict to specific domains.
+# Add rate limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add CORS middleware with environment-aware configuration
+# Parse allowed origins from environment variable (comma-separated list)
+# In production: Only allow specific origins from CORS_ORIGINS
+# In development: Allow all origins for flexibility
+if settings.environment == "production":
+    # Production: Use specific origins from environment variable
+    allowed_origins = settings.cors_origins_list
+    logger.info(f"CORS configured for production with origins: {allowed_origins}")
+else:
+    # Development: Allow all origins for local development
+    allowed_origins = ["*"]
+    logger.info("CORS configured for development (allowing all origins)")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,6 +85,7 @@ app.include_router(heartbeats_router, prefix="/api", tags=["heartbeats"])
 app.include_router(status_router, tags=["status"])
 app.include_router(notifications_router, prefix="/api", tags=["notifications"])
 app.include_router(status_pages_router, prefix="/api", tags=["status_pages"])
+app.include_router(export_router, prefix="/api", tags=["export"])
 
 
 @app.on_event("startup")

@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AuthCallbackAuthCallbackGetData, AuthCallbackAuthCallbackGetResponses, AuthInitAuthLoginGetData, AuthInitAuthLoginGetResponses, CreateHeartbeatMonitorMonitorsHeartbeatPostData, CreateHeartbeatMonitorMonitorsHeartbeatPostErrors, CreateHeartbeatMonitorMonitorsHeartbeatPostResponses, CreateMonitorMonitorsPostData, CreateMonitorMonitorsPostErrors, CreateMonitorMonitorsPostResponses, CreateTokenForTestingAuthTokenPostData, CreateTokenForTestingAuthTokenPostErrors, CreateTokenForTestingAuthTokenPostResponses, DeleteMonitorMonitorsMonitorIdDeleteData, DeleteMonitorMonitorsMonitorIdDeleteErrors, DeleteMonitorMonitorsMonitorIdDeleteResponses, DisableMaintenanceMonitorsMonitorIdMaintenanceDeleteData, DisableMaintenanceMonitorsMonitorIdMaintenanceDeleteErrors, DisableMaintenanceMonitorsMonitorIdMaintenanceDeleteResponses, EnableMaintenanceMonitorsMonitorIdMaintenancePutData, EnableMaintenanceMonitorsMonitorIdMaintenancePutErrors, EnableMaintenanceMonitorsMonitorIdMaintenancePutResponses, GetCurrentUserInfoAuthMeGetData, GetCurrentUserInfoAuthMeGetResponses, GetMonitorHeartbeatsMonitorsMonitorIdHeartbeatsGetData, GetMonitorHeartbeatsMonitorsMonitorIdHeartbeatsGetErrors, GetMonitorHeartbeatsMonitorsMonitorIdHeartbeatsGetResponses, GetMonitorMonitorsMonitorIdGetData, GetMonitorMonitorsMonitorIdGetErrors, GetMonitorMonitorsMonitorIdGetResponses, GetMonitorStatsMonitorsMonitorIdStatsGetData, GetMonitorStatsMonitorsMonitorIdStatsGetErrors, GetMonitorStatsMonitorsMonitorIdStatsGetResponses, GetMonitorTimingStatsMonitorsMonitorIdTimingStatsGetData, GetMonitorTimingStatsMonitorsMonitorIdTimingStatsGetErrors, GetMonitorTimingStatsMonitorsMonitorIdTimingStatsGetResponses, GetSchedulerStatusStatusSchedulerGetData, GetSchedulerStatusStatusSchedulerGetResponses, HealthCheckHealthGetData, HealthCheckHealthGetResponses, ListMonitorsMonitorsGetData, ListMonitorsMonitorsGetErrors, ListMonitorsMonitorsGetResponses, ProtectedRouteAuthProtectedGetData, ProtectedRouteAuthProtectedGetResponses, ReadUsersMeUsersMeGetData, ReadUsersMeUsersMeGetResponses, ReceiveHeartbeatApiHeartbeatsMonitorIdPostData, ReceiveHeartbeatApiHeartbeatsMonitorIdPostErrors, ReceiveHeartbeatApiHeartbeatsMonitorIdPostResponses, ReceiveHeartbeatGetApiHeartbeatsMonitorIdGetData, ReceiveHeartbeatGetApiHeartbeatsMonitorIdGetErrors, ReceiveHeartbeatGetApiHeartbeatsMonitorIdGetResponses, RefreshSchedulerStatusSchedulerRefreshPostData, RefreshSchedulerStatusSchedulerRefreshPostResponses, RootGetData, RootGetResponses, TestDeepCheckStatusTestDeepGetData, TestDeepCheckStatusTestDeepGetErrors, TestDeepCheckStatusTestDeepGetResponses, TestSslCheckStatusTestSslGetData, TestSslCheckStatusTestSslGetErrors, TestSslCheckStatusTestSslGetResponses, UpdateMonitorMonitorsMonitorIdPutData, UpdateMonitorMonitorsMonitorIdPutErrors, UpdateMonitorMonitorsMonitorIdPutResponses } from './types.gen';
+import type { AddIncidentUpdateApiStatusPagesStatusPageIdIncidentsIncidentIdUpdatesPostData, AddIncidentUpdateApiStatusPagesStatusPageIdIncidentsIncidentIdUpdatesPostErrors, AddIncidentUpdateApiStatusPagesStatusPageIdIncidentsIncidentIdUpdatesPostResponses, AuthCallbackAuthCallbackGetData, AuthCallbackAuthCallbackGetResponses, AuthInitAuthLoginGetData, AuthInitAuthLoginGetResponses, CreateComponentApiStatusPagesStatusPageIdComponentsPostData, CreateComponentApiStatusPagesStatusPageIdComponentsPostErrors, CreateComponentApiStatusPagesStatusPageIdComponentsPostResponses, CreateHeartbeatMonitorMonitorsHeartbeatPostData, CreateHeartbeatMonitorMonitorsHeartbeatPostErrors, CreateHeartbeatMonitorMonitorsHeartbeatPostResponses, CreateIncidentApiStatusPagesStatusPageIdIncidentsPostData, CreateIncidentApiStatusPagesStatusPageIdIncidentsPostErrors, CreateIncidentApiStatusPagesStatusPageIdIncidentsPostResponses, CreateMaintenanceApiStatusPagesStatusPageIdMaintenancesPostData, CreateMaintenanceApiStatusPagesStatusPageIdMaintenancesPostErrors, CreateMaintenanceApiStatusPagesStatusPageIdMaintenancesPostResponses, CreateMonitorMonitorsPostData, CreateMonitorMonitorsPostErrors, CreateMonitorMonitorsPostResponses, CreateStatusPageApiStatusPagesPostData, CreateStatusPageApiStatusPagesPostErrors, CreateStatusPageApiStatusPagesPostResponses, DeleteComponentApiStatusPagesStatusPageIdComponentsComponentIdDeleteData, DeleteComponentApiStatusPagesStatusPageIdComponentsComponentIdDeleteErrors, DeleteComponentApiStatusPagesStatusPageIdComponentsComponentIdDeleteResponses, DeleteIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdDeleteData, DeleteIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdDeleteErrors, DeleteIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdDeleteResponses, DeleteMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdDeleteData, DeleteMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdDeleteErrors, DeleteMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdDeleteResponses, DeleteMonitorMonitorsMonitorIdDeleteData, DeleteMonitorMonitorsMonitorIdDeleteErrors, DeleteMonitorMonitorsMonitorIdDeleteResponses, DeleteStatusPageApiStatusPagesStatusPageIdDeleteData, DeleteStatusPageApiStatusPagesStatusPageIdDeleteErrors, DeleteStatusPageApiStatusPagesStatusPageIdDeleteResponses, DisableMaintenanceMonitorsMonitorIdMaintenanceDeleteData, DisableMaintenanceMonitorsMonitorIdMaintenanceDeleteErrors, DisableMaintenanceMonitorsMonitorIdMaintenanceDeleteResponses, DisableMonitorSharingMonitorsMonitorIdShareDeleteData, DisableMonitorSharingMonitorsMonitorIdShareDeleteErrors, DisableMonitorSharingMonitorsMonitorIdShareDeleteResponses, EnableMaintenanceMonitorsMonitorIdMaintenancePutData, EnableMaintenanceMonitorsMonitorIdMaintenancePutErrors, EnableMaintenanceMonitorsMonitorIdMaintenancePutResponses, EnableMonitorSharingMonitorsMonitorIdSharePostData, EnableMonitorSharingMonitorsMonitorIdSharePostErrors, EnableMonitorSharingMonitorsMonitorIdSharePostResponses, GetCurrentUserInfoAuthMeGetData, GetCurrentUserInfoAuthMeGetErrors, GetCurrentUserInfoAuthMeGetResponses, GetIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdGetData, GetIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdGetErrors, GetIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdGetResponses, GetIncidentDetailsApiIncidentsIncidentIdGetData, GetIncidentDetailsApiIncidentsIncidentIdGetErrors, GetIncidentDetailsApiIncidentsIncidentIdGetResponses, GetMonitorHeartbeatsMonitorsMonitorIdHeartbeatsGetData, GetMonitorHeartbeatsMonitorsMonitorIdHeartbeatsGetErrors, GetMonitorHeartbeatsMonitorsMonitorIdHeartbeatsGetResponses, GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetData, GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetErrors, GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetResponses, GetMonitorMonitorsMonitorIdGetData, GetMonitorMonitorsMonitorIdGetErrors, GetMonitorMonitorsMonitorIdGetResponses, GetMonitorStatsMonitorsMonitorIdStatsGetData, GetMonitorStatsMonitorsMonitorIdStatsGetErrors, GetMonitorStatsMonitorsMonitorIdStatsGetResponses, GetMonitorTimingStatsMonitorsMonitorIdTimingStatsGetData, GetMonitorTimingStatsMonitorsMonitorIdTimingStatsGetErrors, GetMonitorTimingStatsMonitorsMonitorIdTimingStatsGetResponses, GetNotificationSettingsApiNotificationsSettingsGetData, GetNotificationSettingsApiNotificationsSettingsGetErrors, GetNotificationSettingsApiNotificationsSettingsGetResponses, GetPublicMonitorMonitorsPublicMonitorIdGetData, GetPublicMonitorMonitorsPublicMonitorIdGetErrors, GetPublicMonitorMonitorsPublicMonitorIdGetResponses, GetPublicStatusPageApiStatusPagesPublicSlugGetData, GetPublicStatusPageApiStatusPagesPublicSlugGetErrors, GetPublicStatusPageApiStatusPagesPublicSlugGetResponses, GetSchedulerStatusStatusSchedulerGetData, GetSchedulerStatusStatusSchedulerGetErrors, GetSchedulerStatusStatusSchedulerGetResponses, GetSharedMonitorMonitorsSharedShareTokenGetData, GetSharedMonitorMonitorsSharedShareTokenGetErrors, GetSharedMonitorMonitorsSharedShareTokenGetResponses, GetStatusPageApiStatusPagesStatusPageIdGetData, GetStatusPageApiStatusPagesStatusPageIdGetErrors, GetStatusPageApiStatusPagesStatusPageIdGetResponses, GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetData, GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetErrors, GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetResponses, HealthCheckHealthGetData, HealthCheckHealthGetResponses, ListComponentsApiStatusPagesStatusPageIdComponentsGetData, ListComponentsApiStatusPagesStatusPageIdComponentsGetErrors, ListComponentsApiStatusPagesStatusPageIdComponentsGetResponses, ListIncidentsApiStatusPagesStatusPageIdIncidentsGetData, ListIncidentsApiStatusPagesStatusPageIdIncidentsGetErrors, ListIncidentsApiStatusPagesStatusPageIdIncidentsGetResponses, ListMaintenancesApiStatusPagesStatusPageIdMaintenancesGetData, ListMaintenancesApiStatusPagesStatusPageIdMaintenancesGetErrors, ListMaintenancesApiStatusPagesStatusPageIdMaintenancesGetResponses, ListMonitorsMonitorsGetData, ListMonitorsMonitorsGetErrors, ListMonitorsMonitorsGetResponses, ListStatusPagesApiStatusPagesGetData, ListStatusPagesApiStatusPagesGetErrors, ListStatusPagesApiStatusPagesGetResponses, LogoutAuthLogoutPostData, LogoutAuthLogoutPostResponses, ProcessMonitorIncidentsApiMonitorsMonitorIdProcessIncidentsPostData, ProcessMonitorIncidentsApiMonitorsMonitorIdProcessIncidentsPostErrors, ProcessMonitorIncidentsApiMonitorsMonitorIdProcessIncidentsPostResponses, PushIncidentToStatusPageApiIncidentsIncidentIdPushToStatusPagePostData, PushIncidentToStatusPageApiIncidentsIncidentIdPushToStatusPagePostErrors, PushIncidentToStatusPageApiIncidentsIncidentIdPushToStatusPagePostResponses, ReadUsersMeUsersMeGetData, ReadUsersMeUsersMeGetErrors, ReadUsersMeUsersMeGetResponses, ReceiveHeartbeatApiHeartbeatsMonitorIdPostData, ReceiveHeartbeatApiHeartbeatsMonitorIdPostErrors, ReceiveHeartbeatApiHeartbeatsMonitorIdPostResponses, ReceiveHeartbeatGetApiHeartbeatsMonitorIdGetData, ReceiveHeartbeatGetApiHeartbeatsMonitorIdGetErrors, ReceiveHeartbeatGetApiHeartbeatsMonitorIdGetResponses, RefreshSchedulerStatusSchedulerRefreshPostData, RefreshSchedulerStatusSchedulerRefreshPostErrors, RefreshSchedulerStatusSchedulerRefreshPostResponses, ResolveIncidentApiIncidentsIncidentIdResolvePostData, ResolveIncidentApiIncidentsIncidentIdResolvePostErrors, ResolveIncidentApiIncidentsIncidentIdResolvePostResponses, RootGetData, RootGetResponses, TestDeepCheckStatusTestDeepGetData, TestDeepCheckStatusTestDeepGetErrors, TestDeepCheckStatusTestDeepGetResponses, TestNotificationApiNotificationsTestPostData, TestNotificationApiNotificationsTestPostErrors, TestNotificationApiNotificationsTestPostResponses, TestSslCheckStatusTestSslGetData, TestSslCheckStatusTestSslGetErrors, TestSslCheckStatusTestSslGetResponses, UpdateComponentApiStatusPagesStatusPageIdComponentsComponentIdPutData, UpdateComponentApiStatusPagesStatusPageIdComponentsComponentIdPutErrors, UpdateComponentApiStatusPagesStatusPageIdComponentsComponentIdPutResponses, UpdateIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdPutData, UpdateIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdPutErrors, UpdateIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdPutResponses, UpdateMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdPutData, UpdateMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdPutErrors, UpdateMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdPutResponses, UpdateMonitorMonitorsMonitorIdPutData, UpdateMonitorMonitorsMonitorIdPutErrors, UpdateMonitorMonitorsMonitorIdPutResponses, UpdateNotificationSettingsApiNotificationsSettingsPutData, UpdateNotificationSettingsApiNotificationsSettingsPutErrors, UpdateNotificationSettingsApiNotificationsSettingsPutResponses, UpdateStatusPageApiStatusPagesStatusPageIdPutData, UpdateStatusPageApiStatusPagesStatusPageIdPutErrors, UpdateStatusPageApiStatusPagesStatusPageIdPutResponses, ValidateShareAccessMonitorsSharedShareTokenAccessPostData, ValidateShareAccessMonitorsSharedShareTokenAccessPostErrors, ValidateShareAccessMonitorsSharedShareTokenAccessPostResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -29,33 +29,18 @@ export const authInitAuthLoginGet = <ThrowOnError extends boolean = false>(optio
 export const authCallbackAuthCallbackGet = <ThrowOnError extends boolean = false>(options?: Options<AuthCallbackAuthCallbackGetData, ThrowOnError>) => (options?.client ?? client).get<AuthCallbackAuthCallbackGetResponses, unknown, ThrowOnError>({ url: '/auth/callback', ...options });
 
 /**
- * Get Current User Info
- *
- * Get current authenticated user information
+ * Logout
  */
-export const getCurrentUserInfoAuthMeGet = <ThrowOnError extends boolean = false>(options?: Options<GetCurrentUserInfoAuthMeGetData, ThrowOnError>) => (options?.client ?? client).get<GetCurrentUserInfoAuthMeGetResponses, unknown, ThrowOnError>({
+export const logoutAuthLogoutPost = <ThrowOnError extends boolean = false>(options?: Options<LogoutAuthLogoutPostData, ThrowOnError>) => (options?.client ?? client).post<LogoutAuthLogoutPostResponses, unknown, ThrowOnError>({ url: '/auth/logout', ...options });
+
+/**
+ * Get Current User Info
+ */
+export const getCurrentUserInfoAuthMeGet = <ThrowOnError extends boolean = false>(options?: Options<GetCurrentUserInfoAuthMeGetData, ThrowOnError>) => (options?.client ?? client).get<GetCurrentUserInfoAuthMeGetResponses, GetCurrentUserInfoAuthMeGetErrors, ThrowOnError>({
     security: [{ name: 'Authorization', type: 'apiKey' }],
     url: '/auth/me',
     ...options
 });
-
-/**
- * Protected Route
- *
- * Example protected route that requires authentication
- */
-export const protectedRouteAuthProtectedGet = <ThrowOnError extends boolean = false>(options?: Options<ProtectedRouteAuthProtectedGetData, ThrowOnError>) => (options?.client ?? client).get<ProtectedRouteAuthProtectedGetResponses, unknown, ThrowOnError>({
-    security: [{ name: 'Authorization', type: 'apiKey' }],
-    url: '/auth/protected',
-    ...options
-});
-
-/**
- * Create Token For Testing
- *
- * Development endpoint to create tokens for testing (remove in production)
- */
-export const createTokenForTestingAuthTokenPost = <ThrowOnError extends boolean = false>(options: Options<CreateTokenForTestingAuthTokenPostData, ThrowOnError>) => (options.client ?? client).post<CreateTokenForTestingAuthTokenPostResponses, CreateTokenForTestingAuthTokenPostErrors, ThrowOnError>({ url: '/auth/token', ...options });
 
 /**
  * List Monitors
@@ -191,6 +176,60 @@ export const getMonitorTimingStatsMonitorsMonitorIdTimingStatsGet = <ThrowOnErro
 });
 
 /**
+ * Disable Monitor Sharing
+ *
+ * Disable public sharing for a monitor
+ */
+export const disableMonitorSharingMonitorsMonitorIdShareDelete = <ThrowOnError extends boolean = false>(options: Options<DisableMonitorSharingMonitorsMonitorIdShareDeleteData, ThrowOnError>) => (options.client ?? client).delete<DisableMonitorSharingMonitorsMonitorIdShareDeleteResponses, DisableMonitorSharingMonitorsMonitorIdShareDeleteErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/monitors/{monitor_id}/share',
+    ...options
+});
+
+/**
+ * Enable Monitor Sharing
+ *
+ * Enable public sharing for a monitor with optional expiration and password
+ */
+export const enableMonitorSharingMonitorsMonitorIdSharePost = <ThrowOnError extends boolean = false>(options: Options<EnableMonitorSharingMonitorsMonitorIdSharePostData, ThrowOnError>) => (options.client ?? client).post<EnableMonitorSharingMonitorsMonitorIdSharePostResponses, EnableMonitorSharingMonitorsMonitorIdSharePostErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/monitors/{monitor_id}/share',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Validate Share Access
+ *
+ * Validate access to a shared monitor (check password and expiration)
+ */
+export const validateShareAccessMonitorsSharedShareTokenAccessPost = <ThrowOnError extends boolean = false>(options: Options<ValidateShareAccessMonitorsSharedShareTokenAccessPostData, ThrowOnError>) => (options.client ?? client).post<ValidateShareAccessMonitorsSharedShareTokenAccessPostResponses, ValidateShareAccessMonitorsSharedShareTokenAccessPostErrors, ThrowOnError>({
+    url: '/monitors/shared/{share_token}/access',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Shared Monitor
+ *
+ * Get monitor details by share token (public access, no authentication required)
+ */
+export const getSharedMonitorMonitorsSharedShareTokenGet = <ThrowOnError extends boolean = false>(options: Options<GetSharedMonitorMonitorsSharedShareTokenGetData, ThrowOnError>) => (options.client ?? client).get<GetSharedMonitorMonitorsSharedShareTokenGetResponses, GetSharedMonitorMonitorsSharedShareTokenGetErrors, ThrowOnError>({ url: '/monitors/shared/{share_token}', ...options });
+
+/**
+ * Get Public Monitor
+ *
+ * Get monitor details for public sharing (simplified endpoint for demo purposes)
+ */
+export const getPublicMonitorMonitorsPublicMonitorIdGet = <ThrowOnError extends boolean = false>(options: Options<GetPublicMonitorMonitorsPublicMonitorIdGetData, ThrowOnError>) => (options.client ?? client).get<GetPublicMonitorMonitorsPublicMonitorIdGetResponses, GetPublicMonitorMonitorsPublicMonitorIdGetErrors, ThrowOnError>({ url: '/monitors/public/{monitor_id}', ...options });
+
+/**
  * Receive Heartbeat Get
  *
  * Receive a heartbeat ping from an external service via GET request.
@@ -229,7 +268,7 @@ export const receiveHeartbeatApiHeartbeatsMonitorIdPost = <ThrowOnError extends 
  *
  * Get detailed scheduler status (requires authentication).
  */
-export const getSchedulerStatusStatusSchedulerGet = <ThrowOnError extends boolean = false>(options?: Options<GetSchedulerStatusStatusSchedulerGetData, ThrowOnError>) => (options?.client ?? client).get<GetSchedulerStatusStatusSchedulerGetResponses, unknown, ThrowOnError>({
+export const getSchedulerStatusStatusSchedulerGet = <ThrowOnError extends boolean = false>(options?: Options<GetSchedulerStatusStatusSchedulerGetData, ThrowOnError>) => (options?.client ?? client).get<GetSchedulerStatusStatusSchedulerGetResponses, GetSchedulerStatusStatusSchedulerGetErrors, ThrowOnError>({
     security: [{ name: 'Authorization', type: 'apiKey' }],
     url: '/status/scheduler',
     ...options
@@ -260,9 +299,376 @@ export const testSslCheckStatusTestSslGet = <ThrowOnError extends boolean = fals
  *
  * Manually trigger scheduler refresh (requires authentication).
  */
-export const refreshSchedulerStatusSchedulerRefreshPost = <ThrowOnError extends boolean = false>(options?: Options<RefreshSchedulerStatusSchedulerRefreshPostData, ThrowOnError>) => (options?.client ?? client).post<RefreshSchedulerStatusSchedulerRefreshPostResponses, unknown, ThrowOnError>({
+export const refreshSchedulerStatusSchedulerRefreshPost = <ThrowOnError extends boolean = false>(options?: Options<RefreshSchedulerStatusSchedulerRefreshPostData, ThrowOnError>) => (options?.client ?? client).post<RefreshSchedulerStatusSchedulerRefreshPostResponses, RefreshSchedulerStatusSchedulerRefreshPostErrors, ThrowOnError>({
     security: [{ name: 'Authorization', type: 'apiKey' }],
     url: '/status/scheduler/refresh',
+    ...options
+});
+
+/**
+ * Get Notification Settings
+ *
+ * Get user notification settings
+ */
+export const getNotificationSettingsApiNotificationsSettingsGet = <ThrowOnError extends boolean = false>(options?: Options<GetNotificationSettingsApiNotificationsSettingsGetData, ThrowOnError>) => (options?.client ?? client).get<GetNotificationSettingsApiNotificationsSettingsGetResponses, GetNotificationSettingsApiNotificationsSettingsGetErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/notifications/settings',
+    ...options
+});
+
+/**
+ * Update Notification Settings
+ *
+ * Update user notification settings
+ */
+export const updateNotificationSettingsApiNotificationsSettingsPut = <ThrowOnError extends boolean = false>(options: Options<UpdateNotificationSettingsApiNotificationsSettingsPutData, ThrowOnError>) => (options.client ?? client).put<UpdateNotificationSettingsApiNotificationsSettingsPutResponses, UpdateNotificationSettingsApiNotificationsSettingsPutErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/notifications/settings',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Test Notification
+ *
+ * Send a test notification to verify webhook configuration
+ */
+export const testNotificationApiNotificationsTestPost = <ThrowOnError extends boolean = false>(options: Options<TestNotificationApiNotificationsTestPostData, ThrowOnError>) => (options.client ?? client).post<TestNotificationApiNotificationsTestPostResponses, TestNotificationApiNotificationsTestPostErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/notifications/test',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List Status Pages
+ *
+ * List all status pages for the current user
+ */
+export const listStatusPagesApiStatusPagesGet = <ThrowOnError extends boolean = false>(options?: Options<ListStatusPagesApiStatusPagesGetData, ThrowOnError>) => (options?.client ?? client).get<ListStatusPagesApiStatusPagesGetResponses, ListStatusPagesApiStatusPagesGetErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/',
+    ...options
+});
+
+/**
+ * Create Status Page
+ *
+ * Create a new status page
+ */
+export const createStatusPageApiStatusPagesPost = <ThrowOnError extends boolean = false>(options: Options<CreateStatusPageApiStatusPagesPostData, ThrowOnError>) => (options.client ?? client).post<CreateStatusPageApiStatusPagesPostResponses, CreateStatusPageApiStatusPagesPostErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete Status Page
+ *
+ * Delete a status page
+ */
+export const deleteStatusPageApiStatusPagesStatusPageIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteStatusPageApiStatusPagesStatusPageIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteStatusPageApiStatusPagesStatusPageIdDeleteResponses, DeleteStatusPageApiStatusPagesStatusPageIdDeleteErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}',
+    ...options
+});
+
+/**
+ * Get Status Page
+ *
+ * Get a specific status page
+ */
+export const getStatusPageApiStatusPagesStatusPageIdGet = <ThrowOnError extends boolean = false>(options: Options<GetStatusPageApiStatusPagesStatusPageIdGetData, ThrowOnError>) => (options.client ?? client).get<GetStatusPageApiStatusPagesStatusPageIdGetResponses, GetStatusPageApiStatusPagesStatusPageIdGetErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}',
+    ...options
+});
+
+/**
+ * Update Status Page
+ *
+ * Update a status page
+ */
+export const updateStatusPageApiStatusPagesStatusPageIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateStatusPageApiStatusPagesStatusPageIdPutData, ThrowOnError>) => (options.client ?? client).put<UpdateStatusPageApiStatusPagesStatusPageIdPutResponses, UpdateStatusPageApiStatusPagesStatusPageIdPutErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List Components
+ *
+ * List all components for a status page
+ */
+export const listComponentsApiStatusPagesStatusPageIdComponentsGet = <ThrowOnError extends boolean = false>(options: Options<ListComponentsApiStatusPagesStatusPageIdComponentsGetData, ThrowOnError>) => (options.client ?? client).get<ListComponentsApiStatusPagesStatusPageIdComponentsGetResponses, ListComponentsApiStatusPagesStatusPageIdComponentsGetErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/components',
+    ...options
+});
+
+/**
+ * Create Component
+ *
+ * Create a new component on a status page
+ */
+export const createComponentApiStatusPagesStatusPageIdComponentsPost = <ThrowOnError extends boolean = false>(options: Options<CreateComponentApiStatusPagesStatusPageIdComponentsPostData, ThrowOnError>) => (options.client ?? client).post<CreateComponentApiStatusPagesStatusPageIdComponentsPostResponses, CreateComponentApiStatusPagesStatusPageIdComponentsPostErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/components',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete Component
+ *
+ * Delete a component
+ */
+export const deleteComponentApiStatusPagesStatusPageIdComponentsComponentIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteComponentApiStatusPagesStatusPageIdComponentsComponentIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteComponentApiStatusPagesStatusPageIdComponentsComponentIdDeleteResponses, DeleteComponentApiStatusPagesStatusPageIdComponentsComponentIdDeleteErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/components/{component_id}',
+    ...options
+});
+
+/**
+ * Update Component
+ *
+ * Update a component
+ */
+export const updateComponentApiStatusPagesStatusPageIdComponentsComponentIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateComponentApiStatusPagesStatusPageIdComponentsComponentIdPutData, ThrowOnError>) => (options.client ?? client).put<UpdateComponentApiStatusPagesStatusPageIdComponentsComponentIdPutResponses, UpdateComponentApiStatusPagesStatusPageIdComponentsComponentIdPutErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/components/{component_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List Incidents
+ *
+ * List incidents for a status page
+ */
+export const listIncidentsApiStatusPagesStatusPageIdIncidentsGet = <ThrowOnError extends boolean = false>(options: Options<ListIncidentsApiStatusPagesStatusPageIdIncidentsGetData, ThrowOnError>) => (options.client ?? client).get<ListIncidentsApiStatusPagesStatusPageIdIncidentsGetResponses, ListIncidentsApiStatusPagesStatusPageIdIncidentsGetErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/incidents',
+    ...options
+});
+
+/**
+ * Create Incident
+ *
+ * Create a new incident
+ */
+export const createIncidentApiStatusPagesStatusPageIdIncidentsPost = <ThrowOnError extends boolean = false>(options: Options<CreateIncidentApiStatusPagesStatusPageIdIncidentsPostData, ThrowOnError>) => (options.client ?? client).post<CreateIncidentApiStatusPagesStatusPageIdIncidentsPostResponses, CreateIncidentApiStatusPagesStatusPageIdIncidentsPostErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/incidents',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete Incident
+ *
+ * Delete an incident
+ */
+export const deleteIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdDeleteResponses, DeleteIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdDeleteErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/incidents/{incident_id}',
+    ...options
+});
+
+/**
+ * Get Incident
+ *
+ * Get a specific incident
+ */
+export const getIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdGet = <ThrowOnError extends boolean = false>(options: Options<GetIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdGetData, ThrowOnError>) => (options.client ?? client).get<GetIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdGetResponses, GetIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdGetErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/incidents/{incident_id}',
+    ...options
+});
+
+/**
+ * Update Incident
+ *
+ * Update an incident
+ */
+export const updateIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdPutData, ThrowOnError>) => (options.client ?? client).put<UpdateIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdPutResponses, UpdateIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdPutErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/incidents/{incident_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Add Incident Update
+ *
+ * Add an update to an incident
+ */
+export const addIncidentUpdateApiStatusPagesStatusPageIdIncidentsIncidentIdUpdatesPost = <ThrowOnError extends boolean = false>(options: Options<AddIncidentUpdateApiStatusPagesStatusPageIdIncidentsIncidentIdUpdatesPostData, ThrowOnError>) => (options.client ?? client).post<AddIncidentUpdateApiStatusPagesStatusPageIdIncidentsIncidentIdUpdatesPostResponses, AddIncidentUpdateApiStatusPagesStatusPageIdIncidentsIncidentIdUpdatesPostErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/incidents/{incident_id}/updates',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List Maintenances
+ *
+ * List scheduled maintenances
+ */
+export const listMaintenancesApiStatusPagesStatusPageIdMaintenancesGet = <ThrowOnError extends boolean = false>(options: Options<ListMaintenancesApiStatusPagesStatusPageIdMaintenancesGetData, ThrowOnError>) => (options.client ?? client).get<ListMaintenancesApiStatusPagesStatusPageIdMaintenancesGetResponses, ListMaintenancesApiStatusPagesStatusPageIdMaintenancesGetErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/maintenances',
+    ...options
+});
+
+/**
+ * Create Maintenance
+ *
+ * Create a scheduled maintenance
+ */
+export const createMaintenanceApiStatusPagesStatusPageIdMaintenancesPost = <ThrowOnError extends boolean = false>(options: Options<CreateMaintenanceApiStatusPagesStatusPageIdMaintenancesPostData, ThrowOnError>) => (options.client ?? client).post<CreateMaintenanceApiStatusPagesStatusPageIdMaintenancesPostResponses, CreateMaintenanceApiStatusPagesStatusPageIdMaintenancesPostErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/maintenances',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete Maintenance
+ *
+ * Delete a scheduled maintenance
+ */
+export const deleteMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdDeleteResponses, DeleteMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdDeleteErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/maintenances/{maintenance_id}',
+    ...options
+});
+
+/**
+ * Update Maintenance
+ *
+ * Update a scheduled maintenance
+ */
+export const updateMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdPut = <ThrowOnError extends boolean = false>(options: Options<UpdateMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdPutData, ThrowOnError>) => (options.client ?? client).put<UpdateMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdPutResponses, UpdateMaintenanceApiStatusPagesStatusPageIdMaintenancesMaintenanceIdPutErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/status-pages/{status_page_id}/maintenances/{maintenance_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Public Status Page
+ *
+ * Get public status page by slug (no authentication required)
+ */
+export const getPublicStatusPageApiStatusPagesPublicSlugGet = <ThrowOnError extends boolean = false>(options: Options<GetPublicStatusPageApiStatusPagesPublicSlugGetData, ThrowOnError>) => (options.client ?? client).get<GetPublicStatusPageApiStatusPagesPublicSlugGetResponses, GetPublicStatusPageApiStatusPagesPublicSlugGetErrors, ThrowOnError>({ url: '/api/status-pages/public/{slug}', ...options });
+
+/**
+ * Get Monitor Incidents
+ *
+ * Get consolidated incidents for a monitor
+ */
+export const getMonitorIncidentsApiMonitorsMonitorIdIncidentsGet = <ThrowOnError extends boolean = false>(options: Options<GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetData, ThrowOnError>) => (options.client ?? client).get<GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetResponses, GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/monitors/{monitor_id}/incidents',
+    ...options
+});
+
+/**
+ * Get Incident Details
+ *
+ * Get detailed incident information
+ */
+export const getIncidentDetailsApiIncidentsIncidentIdGet = <ThrowOnError extends boolean = false>(options: Options<GetIncidentDetailsApiIncidentsIncidentIdGetData, ThrowOnError>) => (options.client ?? client).get<GetIncidentDetailsApiIncidentsIncidentIdGetResponses, GetIncidentDetailsApiIncidentsIncidentIdGetErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/incidents/{incident_id}',
+    ...options
+});
+
+/**
+ * Resolve Incident
+ *
+ * Manually resolve an incident
+ */
+export const resolveIncidentApiIncidentsIncidentIdResolvePost = <ThrowOnError extends boolean = false>(options: Options<ResolveIncidentApiIncidentsIncidentIdResolvePostData, ThrowOnError>) => (options.client ?? client).post<ResolveIncidentApiIncidentsIncidentIdResolvePostResponses, ResolveIncidentApiIncidentsIncidentIdResolvePostErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/incidents/{incident_id}/resolve',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Status Page Options
+ *
+ * Get available status pages for pushing incidents
+ */
+export const getStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGet = <ThrowOnError extends boolean = false>(options: Options<GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetData, ThrowOnError>) => (options.client ?? client).get<GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetResponses, GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/monitors/{monitor_id}/status-page-options',
+    ...options
+});
+
+/**
+ * Push Incident To Status Page
+ *
+ * Push an incident to a status page
+ */
+export const pushIncidentToStatusPageApiIncidentsIncidentIdPushToStatusPagePost = <ThrowOnError extends boolean = false>(options: Options<PushIncidentToStatusPageApiIncidentsIncidentIdPushToStatusPagePostData, ThrowOnError>) => (options.client ?? client).post<PushIncidentToStatusPageApiIncidentsIncidentIdPushToStatusPagePostResponses, PushIncidentToStatusPageApiIncidentsIncidentIdPushToStatusPagePostErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/incidents/{incident_id}/push-to-status-page',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Process Monitor Incidents
+ *
+ * Manually trigger incident processing for a monitor
+ */
+export const processMonitorIncidentsApiMonitorsMonitorIdProcessIncidentsPost = <ThrowOnError extends boolean = false>(options: Options<ProcessMonitorIncidentsApiMonitorsMonitorIdProcessIncidentsPostData, ThrowOnError>) => (options.client ?? client).post<ProcessMonitorIncidentsApiMonitorsMonitorIdProcessIncidentsPostResponses, ProcessMonitorIncidentsApiMonitorsMonitorIdProcessIncidentsPostErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/api/monitors/{monitor_id}/process-incidents',
     ...options
 });
 
@@ -285,7 +691,7 @@ export const rootGet = <ThrowOnError extends boolean = false>(options?: Options<
  *
  * Alternative endpoint to get current user (same as /auth/me)
  */
-export const readUsersMeUsersMeGet = <ThrowOnError extends boolean = false>(options?: Options<ReadUsersMeUsersMeGetData, ThrowOnError>) => (options?.client ?? client).get<ReadUsersMeUsersMeGetResponses, unknown, ThrowOnError>({
+export const readUsersMeUsersMeGet = <ThrowOnError extends boolean = false>(options?: Options<ReadUsersMeUsersMeGetData, ThrowOnError>) => (options?.client ?? client).get<ReadUsersMeUsersMeGetResponses, ReadUsersMeUsersMeGetErrors, ThrowOnError>({
     security: [{ name: 'Authorization', type: 'apiKey' }],
     url: '/users/me',
     ...options

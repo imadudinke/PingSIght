@@ -13,13 +13,14 @@ import { DashboardHeader } from "@/components/dashboard/Header";
 import { DashboardFooter } from "@/components/dashboard/Footer";
 import { HeartbeatChart } from "@/components/dashboard/HeartbeatChart";
 import { ShareMonitorModal } from "@/components/monitors/ShareMonitorModal";
+import { ExportMonitorModal } from "@/components/monitors/ExportMonitorModal";
 import { MetricCardSkeleton, HeartbeatRowSkeleton, DeepTraceSkeleton, ChartSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { getDeepTrace, getSSLIssuer, getSSLCommonName, calculateP95Latency, calculateP99Latency, calculateDowntimeDuration } from "@/lib/utils/monitor";
 
 type MonitorDetail = GetMonitorMonitorsMonitorIdGetResponses[200];
 
 type RangeKey = "TODAY" | "WEEK" | "MONTH";
-type GraphRangeKey = "24H" | "7D" | "30D";
+type GraphRangeKey = "24H" | "12H" | "6H";
 
 const RANGE_UI: Record<RangeKey, { label: string; hint: string }> = {
   TODAY: { label: "TODAY", hint: "LAST_50_EVENTS" },
@@ -29,8 +30,8 @@ const RANGE_UI: Record<RangeKey, { label: string; hint: string }> = {
 
 const GRAPH_RANGE_UI: Record<GraphRangeKey, { label: string; hint: string }> = {
   "24H": { label: "24H", hint: "LAST_24_HOURS" },
-  "7D": { label: "7D", hint: "LAST_7_DAYS" },
-  "30D": { label: "30D", hint: "LAST_30_DAYS" },
+  "12H": { label: "12H", hint: "LAST_12_HOURS" },
+  "6H": { label: "6H", hint: "LAST_6_HOURS" },
 };
 
 function RangeTabs({
@@ -77,13 +78,13 @@ function GraphRangeTabs({
   value: GraphRangeKey;
   onChange: (v: GraphRangeKey) => void;
 }) {
-  const keys: GraphRangeKey[] = ["24H", "7D", "30D"];
+  const keys: GraphRangeKey[] = ["24H", "12H", "6H"];
   return (
-    <div className="flex items-center gap-2">
-      <div className="text-[#5f636a] text-[10px] tracking-[0.26em] uppercase mr-3">
+    <div className="flex items-center gap-2 flex-wrap">
+      <div className="text-[#5f636a] text-[10px] tracking-[0.26em] uppercase">
         PING_TIMELINE
       </div>
-      <div className="flex border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]">
+      <div className="flex border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] divide-x divide-[#2a2d31]">
         {keys.map((k) => {
           const active = value === k;
           return (
@@ -91,8 +92,8 @@ function GraphRangeTabs({
               key={k}
               onClick={() => onChange(k)}
               className={cn(
-                "h-8 px-4",
-                "text-[10px] tracking-[0.26em] uppercase",
+                "h-8 px-3 sm:px-4",
+                "text-[10px] tracking-[0.26em] uppercase font-mono",
                 active
                   ? "bg-[rgba(255,255,255,0.06)] text-[#f2d48a]"
                   : "text-[#6f6f6f] hover:text-[#d6d7da] transition"
@@ -274,15 +275,19 @@ export default function MonitorDetailPage() {
   const { isAuthenticated, isLoading, user, logout } = useAuth();
 
   const [monitor, setMonitor] = useState<MonitorDetail | null>(null);
+  const [heartbeats, setHeartbeats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isChartRefreshing, setIsChartRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // UI-only range selector (NO API changes)
   const [range, setRange] = useState<RangeKey>("TODAY");
   const [graphRange, setGraphRange] = useState<GraphRangeKey>("24H");
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // normalize param id (string | string[])
   const rawId = (params as any)?.id as string | string[] | undefined;
@@ -294,47 +299,49 @@ export default function MonitorDetailPage() {
 
   // Fetch monitor details function (reusable)
   const fetchMonitorDetails = useMemo(
-    () => async (isBackgroundRefresh = false) => {
+    () => async (isBackgroundRefresh = false, heartbeatLimit?: number) => {
       if (!monitorId) return;
+      
+      if (!isBackgroundRefresh) setLoading(true);
+      else setIsChartRefreshing(true);
+      
+      setError(null);
 
       try {
-        if (!isBackgroundRefresh) {
-          setLoading(true);
-        } else {
-          setIsRefreshing(true);
-        }
-        setError(null);
+        // Always fetch maximum heartbeats (200) to ensure we have enough data
+        // for any time range selection
+        const limit = 200;
 
-        const response = await getMonitorMonitorsMonitorIdGet({
+        const data = await getMonitorMonitorsMonitorIdGet({
           path: { monitor_id: monitorId },
-          query: { include_heartbeats: 50 },
+          query: { include_heartbeats: limit },
         });
 
-        if (response.error) {
-          if (response.response?.status === 401) {
-            logout();
-            router.push("/");
-            return;
-          }
-          throw new Error("Failed to fetch monitor details");
+        if (data.error || !data.data) {
+          const errorMessage = typeof data.error?.detail === 'string' 
+            ? data.error.detail 
+            : "Failed to fetch monitor";
+          throw new Error(errorMessage);
         }
 
-        setMonitor(response.data);
-        setLastUpdated(new Date());
-      } catch (err) {
-        if (!isBackgroundRefresh) {
-          setMonitor(null);
-        }
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        if (!isBackgroundRefresh) {
-          setLoading(false);
+        // Update heartbeats separately for chart-only refresh
+        if (isBackgroundRefresh) {
+          setHeartbeats((data.data as any).recent_heartbeats || []);
         } else {
-          setIsRefreshing(false);
+          setMonitor(data.data);
+          setHeartbeats((data.data as any).recent_heartbeats || []);
         }
+        
+        setLastUpdated(new Date());
+      } catch (err: any) {
+        console.error("Error fetching monitor:", err);
+        setError(err.message || "Failed to load monitor");
+      } finally {
+        setLoading(false);
+        setIsChartRefreshing(false);
       }
     },
-    [monitorId, logout, router]
+    [monitorId]
   );
 
   // Initial fetch
@@ -393,16 +400,23 @@ export default function MonitorDetailPage() {
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false, // Use 24-hour format
     });
   };
 
-  const incidents = useMemo(() => {
-    const hbs = (monitor as any)?.recent_heartbeats as any[] | undefined;
-    if (!hbs || !Array.isArray(hbs)) return [];
-    return hbs
-      .filter((hb) => (hb?.status_code ?? 0) >= 400 || hb?.error_message)
-      .slice(0, 12);
-  }, [monitor]);
+  // Filter heartbeats based on selected time range
+  const filteredHeartbeats = useMemo(() => {
+    if (!heartbeats || heartbeats.length === 0) return [];
+    
+    const now = new Date();
+    const hoursToShow = graphRange === "24H" ? 24 : graphRange === "12H" ? 12 : 6;
+    const cutoffTime = new Date(now.getTime() - hoursToShow * 60 * 60 * 1000);
+    
+    return heartbeats.filter((hb: any) => {
+      const hbTime = new Date(hb.created_at);
+      return hbTime >= cutoffTime;
+    });
+  }, [heartbeats, graphRange]);
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -419,31 +433,39 @@ export default function MonitorDetailPage() {
       <BackgroundLayers />
 
       <div className="flex min-h-screen">
-        <DashboardSidebar onNewMonitor={() => router.push("/dashboard/monitors")} />
+        <DashboardSidebar 
+          onNewMonitor={() => router.push("/dashboard/monitors")}
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+        />
 
-        <div className="flex-1 flex flex-col ml-[248px]">
-          <DashboardHeader userEmail={user?.email} />
+        <div className="flex-1 flex flex-col lg:ml-[248px]">
+          <DashboardHeader 
+            userEmail={user?.email}
+            onMenuClick={() => setIsMobileMenuOpen(true)}
+          />
 
-          <div className="flex-1 px-8 py-8 overflow-auto">
+          <div className="flex-1 px-4 md:px-6 lg:px-8 py-6 md:py-8 overflow-auto">
             <button
               onClick={() => router.push("/dashboard/monitors")}
               className={cn(
-                "mb-6 h-10 px-4 flex items-center gap-2",
+                "mb-4 md:mb-6 h-10 px-3 md:px-4 flex items-center gap-2",
                 "border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]",
                 "text-[#a9acb2] hover:text-[#d6d7da] hover:border-[#3a3d42] transition",
-                "text-[11px] tracking-[0.26em] uppercase"
+                "text-[10px] md:text-[11px] tracking-[0.26em] uppercase"
               )}
             >
               <span>‹</span>
-              <span>BACK_TO_DASHBOARD</span>
+              <span className="hidden sm:inline">BACK_TO_DASHBOARD</span>
+              <span className="sm:hidden">BACK</span>
             </button>
 
             <Panel className="p-0">
-              <div className="px-6 py-5 border-b border-[#15171a]">
-                <div className="flex items-start justify-between gap-8">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4">
-                      <div className="text-[#d6d7da] text-[14px] tracking-[0.18em] uppercase">
+              <div className="px-4 md:px-6 py-4 md:py-5 border-b border-[#15171a]">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 md:gap-8">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 md:gap-4 flex-wrap">
+                      <div className="text-[#d6d7da] text-[12px] md:text-[14px] tracking-[0.18em] uppercase">
                         MONITOR_DETAILS
                       </div>
                       
@@ -451,30 +473,47 @@ export default function MonitorDetailPage() {
                       {isRefreshing && (
                         <div className="flex items-center gap-2 text-[#f2d48a] text-[10px] tracking-[0.26em] uppercase">
                           <div className="w-2 h-2 rounded-full bg-[#f2d48a] animate-pulse"></div>
-                          <span>UPDATING...</span>
+                          <span className="hidden sm:inline">UPDATING...</span>
                         </div>
                       )}
                       
                       {/* Last updated timestamp */}
                       {lastUpdated && !isRefreshing && (
-                        <div className="text-[#5f636a] text-[10px] tracking-[0.22em] uppercase">
+                        <div className="text-[#5f636a] text-[9px] md:text-[10px] tracking-[0.22em] uppercase">
                           UPDATED: {lastUpdated.toLocaleTimeString('en-US', { 
                             hour: '2-digit', 
                             minute: '2-digit',
-                            second: '2-digit'
+                            second: '2-digit',
+                            hour12: false // Use 24-hour format
                           })}
                         </div>
                       )}
                     </div>
                     
                     {monitor && (
-                      <div className="mt-1 text-[#6f6f6f] text-[11px] tracking-[0.10em]">
+                      <div className="mt-1 text-[#6f6f6f] text-[10px] md:text-[11px] tracking-[0.10em] truncate">
                         {monitor.friendly_name}
                       </div>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 md:gap-4 flex-wrap">
+                    {/* Export button */}
+                    <button
+                      onClick={() => setShowExportModal(true)}
+                      className={cn(
+                        "h-8 px-3 flex items-center gap-2",
+                        "border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]",
+                        "text-[10px] tracking-[0.26em] uppercase transition",
+                        "text-[#a9acb2] hover:text-[#d6d7da] hover:border-[#3a3d42]"
+                      )}
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      <span className="hidden sm:inline">EXPORT</span>
+                    </button>
+                    
                     {/* Share button */}
                     <button
                       onClick={() => setShowShareModal(true)}
@@ -488,7 +527,7 @@ export default function MonitorDetailPage() {
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                       </svg>
-                      <span>SHARE</span>
+                      <span className="hidden sm:inline">SHARE</span>
                     </button>
                     
                     {/* Manual refresh button */}
@@ -505,16 +544,18 @@ export default function MonitorDetailPage() {
                       )}
                     >
                       <span className={cn(isRefreshing && "animate-spin")}>↻</span>
-                      <span>REFRESH</span>
+                      <span className="hidden sm:inline">REFRESH</span>
                     </button>
                     
-                    {/* UI-only range selector */}
-                    <RangeTabs value={range} onChange={setRange} />
+                    {/* UI-only range selector - hide on mobile */}
+                    <div className="hidden lg:block">
+                      <RangeTabs value={range} onChange={setRange} />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6">
+              <div className="p-4 md:p-6">
                 {loading ? (
                   <div className="space-y-6">
                     {/* Deep Trace Skeleton */}
@@ -593,10 +634,10 @@ export default function MonitorDetailPage() {
                   </div>
                 ) : monitor ? (
                   (() => {
-                    // Compute incidents from heartbeats (failures only)
-                    const incidents = (monitor.recent_heartbeats || [])
+                    // Compute incidents from filtered heartbeats (failures only)
+                    const incidents = (filteredHeartbeats || [])
                       .filter((hb: any) => hb.status_code >= 400 || hb.error_message)
-                      .slice(0, 20); // Show last 20 incidents
+                      .slice(0, 10); // Show last 10 incidents
                     
                     return (
                   <div className="space-y-6">
@@ -608,7 +649,7 @@ export default function MonitorDetailPage() {
                     {/* Stats - Different for heartbeat vs regular monitors */}
                     {monitor.monitor_type === "heartbeat" ? (
                       // Heartbeat Monitor Stats
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                         <MetricCard
                           label="UPTIME"
                           value={`${monitor.uptime_percentage?.toFixed(2) ?? "0.00"}%`}
@@ -629,7 +670,8 @@ export default function MonitorDetailPage() {
                           value={monitor.last_ping_received 
                             ? new Date(monitor.last_ping_received).toLocaleTimeString('en-US', {
                                 hour: '2-digit',
-                                minute: '2-digit'
+                                minute: '2-digit',
+                                hour12: false // Use 24-hour format
                               })
                             : "Never"
                           }
@@ -638,7 +680,7 @@ export default function MonitorDetailPage() {
                       </div>
                     ) : (
                       // Regular Monitor Stats
-                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
                         <MetricCard
                           label="UPTIME"
                           value={`${monitor.uptime_percentage?.toFixed(2) ?? "0.00"}%`}
@@ -849,7 +891,7 @@ export default function MonitorDetailPage() {
                           INCIDENT_LOG
                         </div>
                         <div className="text-[#5f636a] text-[10px] tracking-[0.26em] uppercase">
-                          LAST_EVENTS: {incidents.length}
+                          LAST_10_EVENTS: {incidents.length}
                         </div>
                       </div>
 
@@ -888,6 +930,7 @@ export default function MonitorDetailPage() {
                                       day: "numeric",
                                       hour: "2-digit",
                                       minute: "2-digit",
+                                      hour12: false, // Use 24-hour format
                                     })}
                                   </td>
                                   <td className="px-5 py-3">
@@ -909,9 +952,9 @@ export default function MonitorDetailPage() {
                                   </td>
                                   <td className="px-5 py-3 text-[#d6d7da] text-[11px] font-mono">
                                     {(() => {
-                                      // Calculate downtime duration
+                                      // Calculate downtime duration using full heartbeats array
                                       // Find next successful heartbeat after this incident
-                                      const allHeartbeats = monitor.recent_heartbeats || [];
+                                      const allHeartbeats = heartbeats; // Use full array for accurate calculation
                                       const currentIndex = allHeartbeats.findIndex((hb: any) => hb.id === incident.id);
                                       
                                       if (currentIndex === -1) return "< 1min";
@@ -960,84 +1003,35 @@ export default function MonitorDetailPage() {
 
                     {/* Heartbeat Analysis + Enhanced Controls */}
                     <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]">
-                      <div className="px-5 py-4 border-b border-[#15171a] flex items-center justify-between">
+                      <div className="px-5 py-4 border-b border-[#15171a] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-4">
                           <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
-                            HEARTBEAT_ANALYSIS [{(monitor as any).recent_heartbeats?.length ?? 0}]
+                            HEARTBEAT_ANALYSIS
                           </div>
                           <div className="text-[#5f636a] text-[10px] tracking-[0.26em] uppercase">
-                            RANGE: {RANGE_UI[range].label} / {RANGE_UI[range].hint}
+                            [{filteredHeartbeats.length} EVENTS]
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-4">
-                          <GraphRangeTabs value={graphRange} onChange={setGraphRange} />
-                        </div>
+                        <GraphRangeTabs value={graphRange} onChange={setGraphRange} />
                       </div>
 
                       <div className="p-5 relative">
-                        {/* Chart with graph range overlay */}
-                        <div className={cn(
-                          "transition-all duration-300",
-                          (range !== "TODAY" || graphRange !== "24H") && "opacity-40 blur-[0.2px]"
-                        )}>
-                          <HeartbeatChart 
-                            heartbeats={(monitor as any).recent_heartbeats || []} 
-                            monitorType={monitor.monitor_type}
-                            showTimeRangeSelector={false}
-                          />
-                        </div>
-
-                        {/* Enhanced overlay for extended ranges */}
-                        {(range !== "TODAY" || graphRange !== "24H") && (
-                          <div className="absolute inset-0 flex items-center justify-center p-8">
-                            <div className="max-w-[600px] border border-[#f2d48a]/30 bg-[rgba(0,0,0,0.75)] backdrop-blur-md p-8">
-                              <div className="flex items-center gap-3 mb-4">
-                                <div className="w-3 h-3 rounded-full bg-[#f2d48a] animate-pulse"></div>
-                                <div className="text-[#f2d48a] text-[11px] tracking-[0.28em] uppercase font-bold">
-                                  EXTENDED_TELEMETRY_REQUIRED
-                                </div>
-                              </div>
-                              
-                              <div className="text-[#d6d7da] text-[13px] tracking-[0.18em] uppercase mb-4">
-                                {graphRange !== "24H" ? `${graphRange} TIMELINE VIEW` : `${range} ANALYSIS VIEW`}
-                              </div>
-                              
-                              <div className="text-[#6f6f6f] text-[11px] leading-relaxed mb-6">
-                                Your backend currently provides the last 50 heartbeats (~24H data). To display{" "}
-                                <span className="text-[#f2d48a] font-bold">
-                                  {graphRange !== "24H" ? graphRange : range}
-                                </span>{" "}
-                                analytics, the API needs historical data aggregation or extended heartbeat retention.
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-[10px] font-mono">
-                                <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
-                                  <div className="text-[#5f636a] mb-1 tracking-[0.26em] uppercase">CURRENT:</div>
-                                  <div className="text-[#d6d7da]">include_heartbeats=50</div>
-                                  <div className="text-[#d6d7da]">~24H coverage</div>
-                                </div>
-                                <div className="border border-[#2a2d31] bg-[rgba(255,255,255,0.02)] p-3">
-                                  <div className="text-[#5f636a] mb-1 tracking-[0.26em] uppercase">NEEDED:</div>
-                                  <div className="text-[#f2d48a]">Historical aggregation</div>
-                                  <div className="text-[#f2d48a]">Extended retention</div>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-3">
-                                <button
-                                  onClick={() => {
-                                    setRange("TODAY");
-                                    setGraphRange("24H");
-                                  }}
-                                  className="h-9 px-5 bg-[#f2d48a] text-[#0b0c0e] text-[10px] tracking-[0.26em] uppercase font-bold hover:bg-[#d6d7da] transition"
-                                >
-                                  RETURN_TO_24H
-                                </button>
-                                <div className="text-[#5f636a] text-[10px] tracking-[0.26em] uppercase">
-                                  UI_READY • BACKEND_EXPANSION_DISABLED
-                                </div>
-                              </div>
+                        {/* Chart */}
+                        <HeartbeatChart 
+                          heartbeats={filteredHeartbeats} 
+                          monitorType={monitor.monitor_type}
+                          showTimeRangeSelector={false}
+                        />
+                        
+                        {/* Show loading indicator when fetching new range data */}
+                        {isChartRefreshing && (
+                          <div className="absolute top-2 right-2">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-[rgba(0,0,0,0.8)] border border-[#2a2d31] backdrop-blur-sm">
+                              <div className="w-2 h-2 rounded-full bg-[#f2d48a] animate-pulse"></div>
+                              <span className="text-[#f2d48a] text-[9px] tracking-[0.22em] uppercase font-mono">
+                                LOADING_{graphRange}
+                              </span>
                             </div>
                           </div>
                         )}
@@ -1062,6 +1056,16 @@ export default function MonitorDetailPage() {
           monitorId={monitorId || ""}
           monitorName={monitor.friendly_name}
           onClose={() => setShowShareModal(false)}
+        />
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && monitor && (
+        <ExportMonitorModal
+          isOpen={showExportModal}
+          monitorId={monitorId || ""}
+          monitorName={monitor.friendly_name}
+          onClose={() => setShowExportModal(false)}
         />
       )}
     </div>

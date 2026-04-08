@@ -19,8 +19,10 @@ import { CreateMonitorModal } from "@/components/monitors/CreateMonitorModal";
 import { EditMonitorModal } from "@/components/monitors/EditMonitorModal";
 import { DeleteConfirmModal } from "@/components/monitors/DeleteConfirmModal";
 import { ShareMonitorModal } from "@/components/monitors/ShareMonitorModal";
+import { BulkExportModal } from "@/components/monitors/BulkExportModal";
 import { MonitorActionsMenu } from "@/components/monitors/MonitorActionsMenu";
 import { MonitorRowSkeleton } from "@/components/ui/Skeleton";
+import { WorldMap } from "@/components/dashboard/WorldMap";
 import type { MonitorResponse } from "@/lib/api/types.gen";
 
 export default function Dashboard() {
@@ -32,8 +34,30 @@ export default function Dashboard() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isBulkExportModalOpen, setIsBulkExportModalOpen] = useState(false);
   const [selectedMonitor, setSelectedMonitor] = useState<MonitorResponse | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const itemsPerPage = 10;
+
+  // Sample world map data - replace with real monitoring nodes later
+  const worldMapNodes = useMemo(() => [
+    { id: "us-east", name: "US East", lat: 40.7128, lon: -74.0060, status: "ok" as const },
+    { id: "us-west", name: "US West", lat: 37.7749, lon: -122.4194, status: "ok" as const },
+    { id: "eu-west", name: "EU West", lat: 51.5074, lon: -0.1278, status: "ok" as const },
+    { id: "eu-central", name: "EU Central", lat: 50.1109, lon: 8.6821, status: "ok" as const },
+    { id: "asia-east", name: "Asia East", lat: 35.6762, lon: 139.6503, status: "ok" as const },
+    { id: "asia-south", name: "Asia South", lat: 1.3521, lon: 103.8198, status: "ok" as const },
+    { id: "au-east", name: "Australia", lat: -33.8688, lon: 151.2093, status: "ok" as const },
+  ], []);
+
+  const worldMapPings = useMemo(() => [
+    { id: "ping-1", fromId: "us-east", toId: "eu-west", latencyMs: 85, tone: "ok" as const },
+    { id: "ping-2", fromId: "us-west", toId: "asia-east", latencyMs: 120, tone: "ok" as const },
+    { id: "ping-3", fromId: "eu-west", toId: "eu-central", latencyMs: 25, tone: "ok" as const },
+    { id: "ping-4", fromId: "asia-east", toId: "asia-south", latencyMs: 65, tone: "ok" as const },
+    { id: "ping-5", fromId: "asia-south", toId: "au-east", latencyMs: 95, tone: "ok" as const },
+    { id: "ping-6", fromId: "us-east", toId: "us-west", latencyMs: 70, tone: "ok" as const },
+  ], []);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.push("/");
@@ -84,14 +108,21 @@ export default function Dashboard() {
       <BackgroundLayers />
 
       <div className="flex min-h-screen">
-        <DashboardSidebar onNewMonitor={() => setIsCreateModalOpen(true)} />
+        <DashboardSidebar 
+          onNewMonitor={() => setIsCreateModalOpen(true)}
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+        />
 
-        <div className="flex-1 flex flex-col ml-[248px]">
-          <DashboardHeader userEmail={user?.email} />
+        <div className="flex-1 flex flex-col lg:ml-[248px]">
+          <DashboardHeader 
+            userEmail={user?.email}
+            onMenuClick={() => setIsMobileMenuOpen(true)}
+          />
 
-          <div className="flex-1 px-8 py-8 overflow-auto">
+          <div className="flex-1 px-4 md:px-6 lg:px-8 py-6 md:py-8 overflow-auto">
             {/* STATS */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               <StatCard
                 title="SYSTEM_UPTIME"
                 value="99.98%"
@@ -117,10 +148,10 @@ export default function Dashboard() {
             </div>
 
             {/* ACTIVE MONITORS */}
-            <section className="mt-8">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-4">
-                  <div className="text-[#d6d7da] text-[14px] tracking-[0.18em] uppercase">
+            <section className="mt-6 md:mt-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 gap-3">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="text-[#d6d7da] text-[12px] md:text-[14px] tracking-[0.18em] uppercase">
                     ACTIVE_MONITORS [N:{totalMonitors}]
                   </div>
                   
@@ -143,7 +174,7 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-3 md:gap-6 flex-wrap">
                   {/* Manual refresh button */}
                   <button
                     onClick={() => refetch()}
@@ -158,16 +189,34 @@ export default function Dashboard() {
                     )}
                   >
                     <span className={cn(isRefreshing && "animate-spin")}>↻</span>
-                    <span>REFRESH</span>
+                    <span className="hidden sm:inline">REFRESH</span>
                   </button>
+                  
+                  {/* Bulk Export Button */}
+                  {monitors.length > 0 && (
+                    <button
+                      onClick={() => setIsBulkExportModalOpen(true)}
+                      className={cn(
+                        "h-8 px-3 flex items-center gap-2",
+                        "border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]",
+                        "text-[10px] tracking-[0.26em] uppercase transition",
+                        "text-[#a9acb2] hover:text-[#d6d7da] hover:border-[#3a3d42]"
+                      )}
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      <span className="hidden sm:inline">EXPORT_ALL</span>
+                    </button>
+                  )}
                   
                   <button
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="bg-[#f2d48a] text-[#0b0c0e] font-mono text-[10px] font-bold tracking-[0.26em] uppercase px-4 py-2 hover:bg-[#d6d7da] transition-all"
+                    className="bg-[#f2d48a] text-[#0b0c0e] font-mono text-[10px] font-bold tracking-[0.26em] uppercase px-3 md:px-4 py-2 hover:bg-[#d6d7da] transition-all whitespace-nowrap"
                   >
                     + NEW_MONITOR
                   </button>
-                  <div className="flex items-center gap-6 text-[10px] tracking-[0.26em] uppercase">
+                  <div className="hidden md:flex items-center gap-6 text-[10px] tracking-[0.26em] uppercase">
                     <LegendDot label="OPERATIONAL" color="#f2d48a" />
                     <LegendDot label="DEGRADED" color="#ff6a6a" />
                   </div>
@@ -176,25 +225,25 @@ export default function Dashboard() {
               <Panel className="overflow-hidden">
                 {loadingMonitors ? (
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full min-w-[800px]">
                       <thead>
                         <tr className="border-b border-[#15171a]">
-                          <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                          <th className="px-3 md:px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
                             MONITOR
                           </th>
-                          <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                          <th className="px-3 md:px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
                             STATUS
                           </th>
-                          <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                          <th className="px-3 md:px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
                             UPTIME
                           </th>
-                          <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                          <th className="px-3 md:px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
                             LATENCY
                           </th>
-                          <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                          <th className="px-3 md:px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
                             LAST_CHECK
                           </th>
-                          <th className="px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
+                          <th className="px-3 md:px-5 py-3 text-left text-[#5f636a] text-[10px] tracking-[0.26em] uppercase font-normal">
                             ACTIONS
                           </th>
                         </tr>
@@ -212,37 +261,39 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <>
-                    <div className="divide-y divide-[#15171a]">
-                      {paginatedMonitors.map((m: any) => (
-                        <div key={m.id} className="relative">
-                          <div className="flex items-center">
-                            <div 
-                              className="flex-1 cursor-pointer"
-                              onClick={() => router.push(`/dashboard/monitors/${m.id}`)}
-                            >
-                              <MonitorRow monitor={m} onClick={() => {}} />
-                            </div>
-                            <div className="px-6">
-                              <MonitorActionsMenu
-                                monitor={m}
-                                onEdit={() => {
-                                  setSelectedMonitor(m);
-                                  setIsEditModalOpen(true);
-                                }}
-                                onDelete={() => {
-                                  setSelectedMonitor(m);
-                                  setIsDeleteModalOpen(true);
-                                }}
-                                onShare={() => {
-                                  setSelectedMonitor(m);
-                                  setIsShareModalOpen(true);
-                                }}
-                                onMaintenanceToggle={(updatedMonitor) => updateMonitor(updatedMonitor)}
-                              />
+                    <div className="overflow-x-auto">
+                      <div className="min-w-[800px] divide-y divide-[#15171a]">
+                        {paginatedMonitors.map((m: any) => (
+                          <div key={m.id} className="relative">
+                            <div className="flex items-center">
+                              <div 
+                                className="flex-1 cursor-pointer"
+                                onClick={() => router.push(`/dashboard/monitors/${m.id}`)}
+                              >
+                                <MonitorRow monitor={m} onClick={() => {}} />
+                              </div>
+                              <div className="px-3 md:px-6">
+                                <MonitorActionsMenu
+                                  monitor={m}
+                                  onEdit={() => {
+                                    setSelectedMonitor(m);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                  onDelete={() => {
+                                    setSelectedMonitor(m);
+                                    setIsDeleteModalOpen(true);
+                                  }}
+                                  onShare={() => {
+                                    setSelectedMonitor(m);
+                                    setIsShareModalOpen(true);
+                                  }}
+                                  onMaintenanceToggle={(updatedMonitor) => updateMonitor(updatedMonitor)}
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                     <Pagination
                       currentPage={currentPage}
@@ -256,34 +307,29 @@ export default function Dashboard() {
             </section>
 
             {/* BOTTOM GRID */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6 md:mt-8">
               <Panel>
-                <div className="px-6 py-5 border-b border-[#15171a]">
-                  <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
+                <div className="px-4 md:px-6 py-4 md:py-5 border-b border-[#15171a]">
+                  <div className="text-[#d6d7da] text-[11px] md:text-[12px] tracking-[0.26em] uppercase">
                     SYSTEM_TOPOLOGY_MAP
                   </div>
                 </div>
-                <div className="p-6">
-                  <div className="h-[280px] border border-[#15171a] bg-[rgba(0,0,0,0.18)] flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="mx-auto h-16 w-16 rounded-full border border-[#2a2d31] grid place-items-center">
-                        <div className="h-6 w-6 rounded-full border border-[#6f6f6f]" />
-                      </div>
-                      <div className="mt-6 text-[10px] tracking-[0.26em] uppercase text-[#6f6f6f]">
-                        GLOBAL_INFRASTRUCTURE_VISUALIZER_LOADING...
-                      </div>
-                    </div>
-                  </div>
+                <div className="p-4 md:p-6">
+                  <WorldMap 
+                    nodes={worldMapNodes} 
+                    pings={worldMapPings} 
+                    animate={true}
+                  />
                 </div>
               </Panel>
 
               <Panel>
-                <div className="px-6 py-5 border-b border-[#15171a]">
-                  <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase">
+                <div className="px-4 md:px-6 py-4 md:py-5 border-b border-[#15171a]">
+                  <div className="text-[#d6d7da] text-[11px] md:text-[12px] tracking-[0.26em] uppercase">
                     ANNOTATION_LOGS
                   </div>
                 </div>
-                <div className="p-6 space-y-6">
+                <div className="p-4 md:p-6 space-y-4 md:space-y-6">
                   <LogRow
                     time="14:02:11"
                     title="NODE_ALPHA_RECOVERY"
@@ -355,6 +401,13 @@ export default function Dashboard() {
           setIsShareModalOpen(false);
           setSelectedMonitor(null);
         }}
+      />
+
+      {/* Bulk Export Modal */}
+      <BulkExportModal
+        isOpen={isBulkExportModalOpen}
+        totalMonitors={monitors.length}
+        onClose={() => setIsBulkExportModalOpen(false)}
       />
     </div>
   );

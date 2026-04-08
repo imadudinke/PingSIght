@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import BigInteger, DateTime, Float, ForeignKey, Integer, Text, func, Uuid, JSON, Boolean as sa_Boolean
+from sqlalchemy import BigInteger, DateTime, Float, ForeignKey, Integer, Text, func, Uuid, JSON, Boolean as sa_Boolean, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 import sqlalchemy as sa
@@ -35,4 +35,10 @@ class Heartbeat(Base):
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), index=True)
 
     monitor: Mapped["Monitor"] = relationship("Monitor", back_populates="heartbeats")
+    
+    # Composite index for efficient queries on monitor_id + created_at
+    # This makes queries like "get recent heartbeats for monitor X" lightning fast
+    __table_args__ = (
+        Index('ix_heartbeats_monitor_created', 'monitor_id', 'created_at'),
+    )
 

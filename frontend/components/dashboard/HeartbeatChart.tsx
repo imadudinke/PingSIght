@@ -34,16 +34,17 @@ export function HeartbeatChart({ heartbeats, monitorType = "simple", showTimeRan
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
 
-    // Filter by time range
-    const now = new Date();
-    const filtered = sorted.filter((hb) => {
+    // Only apply internal time filtering if showTimeRangeSelector is true
+    // Otherwise, use all provided heartbeats (parent is handling filtering)
+    const filtered = showTimeRangeSelector ? sorted.filter((hb) => {
       if (timeRange === "all") return true;
+      const now = new Date();
       const date = new Date(hb.created_at);
       const hoursDiff = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
       if (timeRange === "24h") return hoursDiff <= 24;
       if (timeRange === "7d") return hoursDiff <= 168; // 7 days
       return true;
-    });
+    }) : sorted;
 
     // Transform data for chart
     const data = filtered.map((hb) => {
@@ -99,7 +100,7 @@ export function HeartbeatChart({ heartbeats, monitorType = "simple", showTimeRan
       chartData: data,
       stats: { successCount, errorCount, anomalyCount, avgLatency, missedCount },
     };
-  }, [heartbeats, timeRange, isHeartbeatMonitor]);
+  }, [heartbeats, timeRange, isHeartbeatMonitor, showTimeRangeSelector]);
 
   if (!heartbeats || heartbeats.length === 0) {
     return (
@@ -114,6 +115,7 @@ export function HeartbeatChart({ heartbeats, monitorType = "simple", showTimeRan
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false, // Use 24-hour format
     });
   };
 
@@ -264,8 +266,8 @@ export function HeartbeatChart({ heartbeats, monitorType = "simple", showTimeRan
           </div>
         </div>
 
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[300px] w-full min-h-[300px]">
+          <ResponsiveContainer width="100%" height="100%" minHeight={300}>
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="successGradient" x1="0" y1="0" x2="0" y2="1">

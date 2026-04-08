@@ -15,11 +15,5 @@ export type CreateClientConfig<T extends ClientOptions = ClientOptions2> = (over
 
 export const client = createClient(createConfig<ClientOptions2>({ 
   baseUrl: 'http://localhost:8000',
-  // Send cookies with all requests
-  fetch: (input, init) => {
-    return globalThis.fetch(input, {
-      ...init,
-      credentials: 'include'
-    });
-  }
+  credentials: 'include',
 }));

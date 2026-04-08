@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.db.session import get_db
 from app.models.monitor import Monitor
@@ -10,6 +12,9 @@ from app.models.heartbeat import Heartbeat
 from app.schemas.monitor import HeartbeatReceiveResponse
 
 router = APIRouter(prefix="/heartbeats", tags=["heartbeats"])
+
+# Initialize limiter for this router
+limiter = Limiter(key_func=get_remote_address)
 
 
 async def _handle_heartbeat_ping(
@@ -69,7 +74,9 @@ async def _handle_heartbeat_ping(
 
 
 @router.post("/{monitor_id}", response_model=HeartbeatReceiveResponse)
+@limiter.limit("60/minute")  # Allow 60 pings per minute per IP (1 per second average)
 async def receive_heartbeat(
+    request: Request,  # Required for rate limiting
     monitor_id: UUID,
     db: AsyncSession = Depends(get_db)
 ) -> HeartbeatReceiveResponse:
@@ -78,12 +85,16 @@ async def receive_heartbeat(
 
     This endpoint does not require user authentication - only the monitor ID is needed.
     The monitor ID acts as a secret token for authentication.
+    
+    Rate Limited: 60 requests per minute per IP address to prevent abuse.
     """
     return await _handle_heartbeat_ping(monitor_id, db)
 
 
 @router.get("/{monitor_id}", response_model=HeartbeatReceiveResponse)
+@limiter.limit("60/minute")  # Allow 60 pings per minute per IP (1 per second average)
 async def receive_heartbeat_get(
+    request: Request,  # Required for rate limiting
     monitor_id: UUID,
     db: AsyncSession = Depends(get_db)
 ) -> HeartbeatReceiveResponse:
@@ -96,7 +107,10 @@ async def receive_heartbeat_get(
     This endpoint does not require user authentication - only the monitor ID is needed.
     The monitor ID acts as a secret token for authentication.
     
+    Rate Limited: 60 requests per minute per IP address to prevent abuse.
+    
     Args:
+        request: FastAPI request object (for rate limiting)
         monitor_id: UUID of the heartbeat monitor
         db: Database session
         
@@ -106,5 +120,6 @@ async def receive_heartbeat_get(
     Raises:
         HTTPException 404: Monitor not found
         HTTPException 400: Monitor is not a heartbeat type
+        HTTPException 429: Rate limit exceeded
     """
     return await _handle_heartbeat_ping(monitor_id, db)

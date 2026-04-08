@@ -21,6 +21,7 @@ dependencies = [
   "python-dotenv>=1.2.2",
   "apscheduler>=3.10.4",
   "python-whois>=0.9.6",
+  "slowapi>=0.1.9",
 ]
 
 [tool.uv]

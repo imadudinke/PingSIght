@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils/ui";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 function TopTab({
   active,
@@ -182,9 +183,21 @@ function UserAccountModal({
     if (!buttonRef.current) return { top: 72, right: 32 };
     
     const buttonRect = buttonRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    
+    // On mobile, center the modal
+    if (viewportWidth < 768) {
+      return {
+        top: buttonRect.bottom + 8,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        right: 'auto',
+      };
+    }
+    
     return {
       top: buttonRect.bottom + 8,
-      right: window.innerWidth - buttonRect.right,
+      right: viewportWidth - buttonRect.right,
     };
   };
 
@@ -195,19 +208,21 @@ function UserAccountModal({
   const modalContent = (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" />
+      <div className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm" onClick={onClose} />
 
       {/* Panel */}
       <div
         ref={panelRef}
         className={cn(
-          "fixed w-[340px] z-50",
+          "fixed w-[340px] max-w-[calc(100vw-2rem)] z-[70]",
           "border border-[#2a2d31] bg-[rgba(10,10,11,0.98)] backdrop-blur-[12px]",
           "shadow-[0_18px_60px_rgba(0,0,0,0.55)]"
         )}
         style={{ 
           top: modalPosition.top,
           right: modalPosition.right,
+          left: modalPosition.left,
+          transform: modalPosition.transform,
           transformOrigin: "top right", 
           animation: "psSlideDown 0.16s ease-out" 
         }}
@@ -263,10 +278,7 @@ function UserAccountModal({
         {/* Actions */}
         <div className="px-4 pb-4 space-y-3">
           <button
-            onClick={() => {
-              onClose();
-              onLogout();
-            }}
+            onClick={onLogout}
             className={cn(
               "w-full h-[34px] px-3 text-left",
               "bg-[rgba(255,106,106,0.10)] hover:bg-[rgba(255,106,106,0.18)]",
@@ -300,12 +312,19 @@ function UserAccountModal({
   return createPortal(modalContent, document.body);
 }
 
-export function DashboardHeader({ userEmail }: { userEmail?: string }) {
+export function DashboardHeader({ 
+  userEmail,
+  onMenuClick,
+}: { 
+  userEmail?: string;
+  onMenuClick?: () => void;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { logout } = useAuth();
 
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
 
   const isLiveFeed =
@@ -315,17 +334,25 @@ export function DashboardHeader({ userEmail }: { userEmail?: string }) {
     pathname?.startsWith("/dashboard/heartbeats");
 
   const handleLogout = () => {
-    // keep your existing confirmation behavior
-    if (confirm("Are you sure you want to logout?")) {
-      logout();
-      router.push("/");
-    }
+    logout();
+    router.push("/");
   };
 
   return (
-    <header className="h-[64px] border-b border-[#1b1d20] bg-[rgba(10,10,11,0.25)] backdrop-blur-[2px] px-8 flex items-center justify-between">
-      <div className="flex items-center gap-8">
-        <div className="text-[#d6d7da] text-[14px] tracking-[0.12em] uppercase">
+    <header className="relative z-30 h-[64px] border-b border-[#1b1d20] bg-[rgba(10,10,11,0.25)] backdrop-blur-[2px] px-4 md:px-8 flex items-center justify-between">
+      <div className="flex items-center gap-4 md:gap-8">
+        {/* Mobile Menu Button */}
+        <button
+          onClick={onMenuClick}
+          className="lg:hidden w-9 h-9 flex items-center justify-center text-[#d6d7da] hover:bg-[rgba(255,255,255,0.05)] transition rounded-sm"
+          aria-label="Open menu"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+        <div className="text-[#d6d7da] text-[11px] md:text-[14px] tracking-[0.12em] uppercase truncate">
           PINGSIGHT_MONITORING_V1.0
         </div>
 
@@ -352,8 +379,22 @@ export function DashboardHeader({ userEmail }: { userEmail?: string }) {
             isOpen={isAccountModalOpen}
             onClose={() => setIsAccountModalOpen(false)}
             userEmail={userEmail}
-            onLogout={handleLogout}
+            onLogout={() => {
+              setIsAccountModalOpen(false);
+              setShowLogoutConfirm(true);
+            }}
             buttonRef={accountButtonRef}
+          />
+
+          <ConfirmModal
+            isOpen={showLogoutConfirm}
+            onClose={() => setShowLogoutConfirm(false)}
+            onConfirm={handleLogout}
+            title="CONFIRM_LOGOUT"
+            message="Are you sure you want to logout? You will need to sign in again to access your dashboard."
+            confirmText="LOGOUT"
+            cancelText="CANCEL"
+            variant="warning"
           />
         </div>
       </div>

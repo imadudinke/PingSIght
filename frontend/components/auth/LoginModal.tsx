@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '@/components/ui/Modal';
 import SocialLoginButton from './SocialLoginButton';
+import { AlertModal } from '@/components/ui/ConfirmModal';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -11,6 +12,36 @@ interface LoginModalProps {
 
 export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [loadingProvider, setLoadingProvider] = useState<'google' | 'github' | null>(null);
+  const [showGithubAlert, setShowGithubAlert] = useState(false);
+
+  // Reset loading state when modal opens/closes or when user returns to page
+  useEffect(() => {
+    if (isOpen) {
+      // Reset loading state when modal opens
+      setLoadingProvider(null);
+    }
+  }, [isOpen]);
+
+  // Reset loading state when user returns to the page (e.g., after going back from OAuth)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        setLoadingProvider(null);
+      }
+    };
+
+    const handleFocus = () => {
+      setLoadingProvider(null);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   const handleSocialLogin = (provider: 'google' | 'github') => {
     // Set loading state
@@ -25,7 +56,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     } else if (provider === 'github') {
       // GitHub OAuth not yet implemented in backend
       setLoadingProvider(null);
-      alert('GitHub login coming soon!');
+      setShowGithubAlert(true);
     }
   };
 
@@ -67,6 +98,14 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
           </p>
         </div>
       </div>
+
+      <AlertModal
+        isOpen={showGithubAlert}
+        onClose={() => setShowGithubAlert(false)}
+        title="COMING_SOON"
+        message="GitHub login will be available in a future update. Please use Google authentication for now."
+        variant="info"
+      />
     </Modal>
   );
 }

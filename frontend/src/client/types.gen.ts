@@ -255,61 +255,26 @@ export type IncidentCreate = {
 };
 
 /**
- * IncidentResponse
+ * IncidentDetailsResponse
  */
-export type IncidentResponse = {
+export type IncidentDetailsResponse = {
+    incident: AppApiIncidentsIncidentResponse;
     /**
-     * Id
+     * Heartbeats Count
      */
-    id: string;
+    heartbeats_count: number;
     /**
-     * Status Page Id
+     * Affected Urls
      */
-    status_page_id: string;
+    affected_urls: Array<string>;
     /**
-     * Title
+     * Primary Error
      */
-    title: string;
+    primary_error: string | null;
     /**
-     * Description
+     * Recent Errors
      */
-    description: string | null;
-    /**
-     * Status
-     */
-    status: string;
-    /**
-     * Severity
-     */
-    severity: string;
-    /**
-     * Started At
-     */
-    started_at: string;
-    /**
-     * Resolved At
-     */
-    resolved_at: string | null;
-    /**
-     * Created By
-     */
-    created_by: string;
-    /**
-     * Created At
-     */
-    created_at: string;
-    /**
-     * Updated At
-     */
-    updated_at: string;
-    /**
-     * Updates
-     */
-    updates?: Array<IncidentUpdateResponse>;
-    /**
-     * Components
-     */
-    components?: Array<ComponentSummary>;
+    recent_errors: Array<string>;
 };
 
 /**
@@ -825,6 +790,14 @@ export type NotificationSettingsResponse = {
      */
     discord_enabled: boolean;
     /**
+     * Slack Webhook Url
+     */
+    slack_webhook_url?: string | null;
+    /**
+     * Slack Enabled
+     */
+    slack_enabled: boolean;
+    /**
      * Alert On Down
      */
     alert_on_down: boolean;
@@ -858,6 +831,14 @@ export type NotificationSettingsUpdate = {
      * Discord Enabled
      */
     discord_enabled?: boolean | null;
+    /**
+     * Slack Webhook Url
+     */
+    slack_webhook_url?: string | null;
+    /**
+     * Slack Enabled
+     */
+    slack_enabled?: boolean | null;
     /**
      * Alert On Down
      */
@@ -905,6 +886,18 @@ export type PublicStatusPageResponse = {
      */
     show_incident_history: boolean;
     /**
+     * Template
+     */
+    template: string;
+    /**
+     * Theme
+     */
+    theme: string;
+    /**
+     * Layout
+     */
+    layout: string;
+    /**
      * Branding Logo Url
      */
     branding_logo_url: string | null;
@@ -923,7 +916,7 @@ export type PublicStatusPageResponse = {
     /**
      * Active Incidents
      */
-    active_incidents?: Array<IncidentResponse>;
+    active_incidents?: Array<AppSchemasStatusPageIncidentResponse>;
     /**
      * Upcoming Maintenances
      */
@@ -932,6 +925,34 @@ export type PublicStatusPageResponse = {
      * Overall Status
      */
     overall_status?: string;
+};
+
+/**
+ * PushToStatusPageRequest
+ */
+export type PushToStatusPageRequest = {
+    /**
+     * Status Page Id
+     */
+    status_page_id: string;
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Description
+     */
+    description?: string | null;
+};
+
+/**
+ * ResolveIncidentRequest
+ */
+export type ResolveIncidentRequest = {
+    /**
+     * Resolution Note
+     */
+    resolution_note?: string | null;
 };
 
 /**
@@ -1085,6 +1106,18 @@ export type StatusPageCreate = {
      */
     show_incident_history?: boolean;
     /**
+     * Template
+     */
+    template?: string;
+    /**
+     * Theme
+     */
+    theme?: string;
+    /**
+     * Layout
+     */
+    layout?: string;
+    /**
      * Branding Logo Url
      */
     branding_logo_url?: string | null;
@@ -1096,6 +1129,28 @@ export type StatusPageCreate = {
      * Branding Custom Css
      */
     branding_custom_css?: string | null;
+    /**
+     * Monitor Ids
+     */
+    monitor_ids?: Array<string>;
+};
+
+/**
+ * StatusPageOption
+ */
+export type StatusPageOption = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Slug
+     */
+    slug: string;
 };
 
 /**
@@ -1138,6 +1193,18 @@ export type StatusPageResponse = {
      * Show Incident History
      */
     show_incident_history: boolean;
+    /**
+     * Template
+     */
+    template: string;
+    /**
+     * Theme
+     */
+    theme: string;
+    /**
+     * Layout
+     */
+    layout: string;
     /**
      * Branding Logo Url
      */
@@ -1189,6 +1256,18 @@ export type StatusPageUpdate = {
      */
     show_incident_history?: boolean | null;
     /**
+     * Template
+     */
+    template?: string | null;
+    /**
+     * Theme
+     */
+    theme?: string | null;
+    /**
+     * Layout
+     */
+    layout?: string | null;
+    /**
      * Branding Logo Url
      */
     branding_logo_url?: string | null;
@@ -1238,6 +1317,140 @@ export type ValidationError = {
     ctx?: {
         [key: string]: unknown;
     };
+};
+
+/**
+ * IncidentResponse
+ */
+export type AppApiIncidentsIncidentResponse = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Monitor Id
+     */
+    monitor_id: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Description
+     */
+    description: string | null;
+    /**
+     * Severity
+     */
+    severity: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Started At
+     */
+    started_at: string;
+    /**
+     * Resolved At
+     */
+    resolved_at: string | null;
+    /**
+     * Total Downtime Seconds
+     */
+    total_downtime_seconds: number | null;
+    /**
+     * Affected Checks Count
+     */
+    affected_checks_count: number;
+    /**
+     * Root Cause Type
+     */
+    root_cause_type: string | null;
+    /**
+     * Root Cause Details
+     */
+    root_cause_details: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Error Patterns
+     */
+    error_patterns: Array<string> | null;
+    /**
+     * Is Auto Created
+     */
+    is_auto_created: boolean;
+    /**
+     * Is Pushed To Status Page
+     */
+    is_pushed_to_status_page: boolean;
+    /**
+     * Duration Minutes
+     */
+    duration_minutes: number | null;
+    /**
+     * Is Ongoing
+     */
+    is_ongoing: boolean;
+};
+
+/**
+ * IncidentResponse
+ */
+export type AppSchemasStatusPageIncidentResponse = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Status Page Id
+     */
+    status_page_id: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Description
+     */
+    description: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Severity
+     */
+    severity: string;
+    /**
+     * Started At
+     */
+    started_at: string;
+    /**
+     * Resolved At
+     */
+    resolved_at: string | null;
+    /**
+     * Created By
+     */
+    created_by: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+    /**
+     * Updates
+     */
+    updates?: Array<IncidentUpdateResponse>;
+    /**
+     * Components
+     */
+    components?: Array<ComponentSummary>;
 };
 
 export type AuthInitAuthLoginGetData = {
@@ -1776,6 +1989,41 @@ export type GetSharedMonitorMonitorsSharedShareTokenGetResponses = {
 };
 
 export type GetSharedMonitorMonitorsSharedShareTokenGetResponse = GetSharedMonitorMonitorsSharedShareTokenGetResponses[keyof GetSharedMonitorMonitorsSharedShareTokenGetResponses];
+
+export type GetPublicMonitorMonitorsPublicMonitorIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Monitor Id
+         */
+        monitor_id: string;
+    };
+    query?: {
+        /**
+         * Include Heartbeats
+         */
+        include_heartbeats?: number;
+    };
+    url: '/monitors/public/{monitor_id}';
+};
+
+export type GetPublicMonitorMonitorsPublicMonitorIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetPublicMonitorMonitorsPublicMonitorIdGetError = GetPublicMonitorMonitorsPublicMonitorIdGetErrors[keyof GetPublicMonitorMonitorsPublicMonitorIdGetErrors];
+
+export type GetPublicMonitorMonitorsPublicMonitorIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: MonitorDetailResponse;
+};
+
+export type GetPublicMonitorMonitorsPublicMonitorIdGetResponse = GetPublicMonitorMonitorsPublicMonitorIdGetResponses[keyof GetPublicMonitorMonitorsPublicMonitorIdGetResponses];
 
 export type ReceiveHeartbeatGetApiHeartbeatsMonitorIdGetData = {
     body?: never;
@@ -2328,7 +2576,7 @@ export type ListIncidentsApiStatusPagesStatusPageIdIncidentsGetResponses = {
      *
      * Successful Response
      */
-    200: Array<IncidentResponse>;
+    200: Array<AppSchemasStatusPageIncidentResponse>;
 };
 
 export type ListIncidentsApiStatusPagesStatusPageIdIncidentsGetResponse = ListIncidentsApiStatusPagesStatusPageIdIncidentsGetResponses[keyof ListIncidentsApiStatusPagesStatusPageIdIncidentsGetResponses];
@@ -2358,7 +2606,7 @@ export type CreateIncidentApiStatusPagesStatusPageIdIncidentsPostResponses = {
     /**
      * Successful Response
      */
-    200: IncidentResponse;
+    200: AppSchemasStatusPageIncidentResponse;
 };
 
 export type CreateIncidentApiStatusPagesStatusPageIdIncidentsPostResponse = CreateIncidentApiStatusPagesStatusPageIdIncidentsPostResponses[keyof CreateIncidentApiStatusPagesStatusPageIdIncidentsPostResponses];
@@ -2424,7 +2672,7 @@ export type GetIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdGetResponses
     /**
      * Successful Response
      */
-    200: IncidentResponse;
+    200: AppSchemasStatusPageIncidentResponse;
 };
 
 export type GetIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdGetResponse = GetIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdGetResponses[keyof GetIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdGetResponses];
@@ -2458,7 +2706,7 @@ export type UpdateIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdPutRespon
     /**
      * Successful Response
      */
-    200: IncidentResponse;
+    200: AppSchemasStatusPageIncidentResponse;
 };
 
 export type UpdateIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdPutResponse = UpdateIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdPutResponses[keyof UpdateIncidentApiStatusPagesStatusPageIdIncidentsIncidentIdPutResponses];
@@ -2663,6 +2911,193 @@ export type GetPublicStatusPageApiStatusPagesPublicSlugGetResponses = {
 };
 
 export type GetPublicStatusPageApiStatusPagesPublicSlugGetResponse = GetPublicStatusPageApiStatusPagesPublicSlugGetResponses[keyof GetPublicStatusPageApiStatusPagesPublicSlugGetResponses];
+
+export type GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetData = {
+    body?: never;
+    path: {
+        /**
+         * Monitor Id
+         */
+        monitor_id: string;
+    };
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Include Resolved
+         */
+        include_resolved?: boolean;
+    };
+    url: '/api/monitors/{monitor_id}/incidents';
+};
+
+export type GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetError = GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetErrors[keyof GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetErrors];
+
+export type GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetResponses = {
+    /**
+     * Response Get Monitor Incidents Api Monitors  Monitor Id  Incidents Get
+     *
+     * Successful Response
+     */
+    200: Array<AppApiIncidentsIncidentResponse>;
+};
+
+export type GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetResponse = GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetResponses[keyof GetMonitorIncidentsApiMonitorsMonitorIdIncidentsGetResponses];
+
+export type GetIncidentDetailsApiIncidentsIncidentIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Incident Id
+         */
+        incident_id: string;
+    };
+    query?: never;
+    url: '/api/incidents/{incident_id}';
+};
+
+export type GetIncidentDetailsApiIncidentsIncidentIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetIncidentDetailsApiIncidentsIncidentIdGetError = GetIncidentDetailsApiIncidentsIncidentIdGetErrors[keyof GetIncidentDetailsApiIncidentsIncidentIdGetErrors];
+
+export type GetIncidentDetailsApiIncidentsIncidentIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: IncidentDetailsResponse;
+};
+
+export type GetIncidentDetailsApiIncidentsIncidentIdGetResponse = GetIncidentDetailsApiIncidentsIncidentIdGetResponses[keyof GetIncidentDetailsApiIncidentsIncidentIdGetResponses];
+
+export type ResolveIncidentApiIncidentsIncidentIdResolvePostData = {
+    body: ResolveIncidentRequest;
+    path: {
+        /**
+         * Incident Id
+         */
+        incident_id: string;
+    };
+    query?: never;
+    url: '/api/incidents/{incident_id}/resolve';
+};
+
+export type ResolveIncidentApiIncidentsIncidentIdResolvePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ResolveIncidentApiIncidentsIncidentIdResolvePostError = ResolveIncidentApiIncidentsIncidentIdResolvePostErrors[keyof ResolveIncidentApiIncidentsIncidentIdResolvePostErrors];
+
+export type ResolveIncidentApiIncidentsIncidentIdResolvePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetData = {
+    body?: never;
+    path: {
+        /**
+         * Monitor Id
+         */
+        monitor_id: string;
+    };
+    query?: never;
+    url: '/api/monitors/{monitor_id}/status-page-options';
+};
+
+export type GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetError = GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetErrors[keyof GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetErrors];
+
+export type GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetResponses = {
+    /**
+     * Response Get Status Page Options Api Monitors  Monitor Id  Status Page Options Get
+     *
+     * Successful Response
+     */
+    200: Array<StatusPageOption>;
+};
+
+export type GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetResponse = GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetResponses[keyof GetStatusPageOptionsApiMonitorsMonitorIdStatusPageOptionsGetResponses];
+
+export type PushIncidentToStatusPageApiIncidentsIncidentIdPushToStatusPagePostData = {
+    body: PushToStatusPageRequest;
+    path: {
+        /**
+         * Incident Id
+         */
+        incident_id: string;
+    };
+    query?: never;
+    url: '/api/incidents/{incident_id}/push-to-status-page';
+};
+
+export type PushIncidentToStatusPageApiIncidentsIncidentIdPushToStatusPagePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PushIncidentToStatusPageApiIncidentsIncidentIdPushToStatusPagePostError = PushIncidentToStatusPageApiIncidentsIncidentIdPushToStatusPagePostErrors[keyof PushIncidentToStatusPageApiIncidentsIncidentIdPushToStatusPagePostErrors];
+
+export type PushIncidentToStatusPageApiIncidentsIncidentIdPushToStatusPagePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type ProcessMonitorIncidentsApiMonitorsMonitorIdProcessIncidentsPostData = {
+    body?: never;
+    path: {
+        /**
+         * Monitor Id
+         */
+        monitor_id: string;
+    };
+    query?: never;
+    url: '/api/monitors/{monitor_id}/process-incidents';
+};
+
+export type ProcessMonitorIncidentsApiMonitorsMonitorIdProcessIncidentsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ProcessMonitorIncidentsApiMonitorsMonitorIdProcessIncidentsPostError = ProcessMonitorIncidentsApiMonitorsMonitorIdProcessIncidentsPostErrors[keyof ProcessMonitorIncidentsApiMonitorsMonitorIdProcessIncidentsPostErrors];
+
+export type ProcessMonitorIncidentsApiMonitorsMonitorIdProcessIncidentsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type HealthCheckHealthGetData = {
     body?: never;

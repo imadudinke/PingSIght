@@ -32,6 +32,7 @@ export default function HeartbeatsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [selectedMonitor, setSelectedMonitor] = useState<MonitorResponse | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -95,24 +96,31 @@ export default function HeartbeatsPage() {
       <BackgroundLayers />
 
       <div className="flex min-h-screen">
-        <DashboardSidebar onNewMonitor={() => setIsCreateModalOpen(true)} />
+        <DashboardSidebar 
+          onNewMonitor={() => setIsCreateModalOpen(true)}
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+        />
 
-        <div className="flex-1 flex flex-col ml-[248px]">
-          <DashboardHeader userEmail={user?.email} />
+        <div className="flex-1 flex flex-col lg:ml-[248px]">
+          <DashboardHeader 
+            userEmail={user?.email}
+            onMenuClick={() => setIsMobileMenuOpen(true)}
+          />
 
-          <div className="flex-1 px-8 py-8 overflow-auto">
+          <div className="flex-1 px-4 md:px-6 lg:px-8 py-6 md:py-8 overflow-auto">
             {/* Page Header */}
-            <div className="mb-6">
-              <div className="text-[#d6d7da] text-[18px] tracking-[0.18em] uppercase mb-2">
+            <div className="mb-4 md:mb-6">
+              <div className="text-[#d6d7da] text-[14px] md:text-[18px] tracking-[0.18em] uppercase mb-2">
                 HEARTBEAT_MONITORS
               </div>
-              <div className="text-[#6f6f6f] text-[11px] tracking-[0.10em] leading-relaxed max-w-3xl">
+              <div className="text-[#6f6f6f] text-[10px] md:text-[11px] tracking-[0.10em] leading-relaxed max-w-3xl">
                 "Silence is the Alarm" - Monitor cron jobs, backups, and scheduled tasks. Get alerted when they stop pinging.
               </div>
             </div>
 
             {/* STATS */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
               <StatCard
                 title="TOTAL_HEARTBEATS"
                 value={String(totalMonitors).padStart(2, "0")}

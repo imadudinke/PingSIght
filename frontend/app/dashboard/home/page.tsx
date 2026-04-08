@@ -17,6 +17,7 @@ export default function HomePage() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const { monitors, loading: loadingMonitors, refetch } = useMonitors();
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.push("/");
@@ -70,25 +71,32 @@ export default function HomePage() {
       <BackgroundLayers />
 
       <div className="flex min-h-screen">
-        <DashboardSidebar onNewMonitor={() => setIsCreateModalOpen(true)} />
+        <DashboardSidebar 
+          onNewMonitor={() => setIsCreateModalOpen(true)}
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+        />
 
-        <div className="flex-1 flex flex-col ml-[248px]">
-          <DashboardHeader userEmail={user?.email} />
+        <div className="flex-1 flex flex-col lg:ml-[248px]">
+          <DashboardHeader 
+            userEmail={user?.email}
+            onMenuClick={() => setIsMobileMenuOpen(true)}
+          />
 
-          <div className="flex-1 px-8 py-8 overflow-auto">
+          <div className="flex-1 px-4 md:px-6 lg:px-8 py-6 md:py-8 overflow-auto">
             {/* Welcome Section */}
-            <div className="mb-8">
-              <div className="text-[#d6d7da] text-[18px] tracking-[0.18em] uppercase mb-2">
+            <div className="mb-6 md:mb-8">
+              <div className="text-[#d6d7da] text-[16px] md:text-[18px] tracking-[0.18em] uppercase mb-2">
                 WELCOME_TO_PINGSIGHT
               </div>
-              <div className="text-[#6f6f6f] text-[11px] tracking-[0.10em] leading-relaxed max-w-3xl">
+              <div className="text-[#6f6f6f] text-[10px] md:text-[11px] tracking-[0.10em] leading-relaxed max-w-3xl">
                 Monitor your infrastructure with precision. Track uptime, latency, SSL certificates, and domain expiration.
                 Get instant alerts when things go wrong.
               </div>
             </div>
 
             {/* Overview Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
               <StatCard
                 title="TOTAL_MONITORS"
                 value={String(stats.total).padStart(2, "0")}
@@ -121,11 +129,11 @@ export default function HomePage() {
             </div>
 
             {/* Monitor Types Breakdown */}
-            <section className="mb-8">
-              <div className="text-[#d6d7da] text-[14px] tracking-[0.18em] uppercase mb-3">
+            <section className="mb-6 md:mb-8">
+              <div className="text-[#d6d7da] text-[12px] md:text-[14px] tracking-[0.18em] uppercase mb-3">
                 MONITOR_TYPES_BREAKDOWN
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {/* Simple Monitors */}
                 <div className="cursor-pointer" onClick={() => router.push("/dashboard/monitors")}>
                   <Panel className="hover:border-[#3a3d42] transition">
@@ -204,11 +212,11 @@ export default function HomePage() {
             </section>
 
             {/* Quick Actions */}
-            <section className="mb-8">
-              <div className="text-[#d6d7da] text-[14px] tracking-[0.18em] uppercase mb-3">
+            <section className="mb-6 md:mb-8">
+              <div className="text-[#d6d7da] text-[12px] md:text-[14px] tracking-[0.18em] uppercase mb-3">
                 QUICK_ACTIONS
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <Panel>
                   <div className="p-6">
                     <div className="text-[#d6d7da] text-[12px] tracking-[0.26em] uppercase mb-4">
