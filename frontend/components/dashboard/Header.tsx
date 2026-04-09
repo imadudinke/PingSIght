@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils/ui";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { getNotificationSettingsApiNotificationsSettingsGet, updateNotificationSettingsApiNotificationsSettingsPut } from "@/lib/api/sdk.gen";
 
 function TopTab({
   active,
@@ -143,13 +144,9 @@ function UserAccountModal({
 
   const fetchNotificationSettings = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:8000/api/notifications/settings",
-        { credentials: "include" }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setNotificationsEnabled(Boolean(data.discord_enabled));
+      const response = await getNotificationSettingsApiNotificationsSettingsGet();
+      if (response?.response?.ok && response.data) {
+        setNotificationsEnabled(Boolean(response.data.discord_enabled));
       }
     } catch {
       // UI-only: fail silently, keep last toggle state
@@ -159,18 +156,15 @@ function UserAccountModal({
   const updateNotificationSettings = async (enabled: boolean) => {
     setLoading(true);
     try {
-      const response = await fetch(
-        "http://localhost:8000/api/notifications/settings",
-        {
-          method: "PUT",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ discord_enabled: enabled }),
-        }
-      );
+      const response = await updateNotificationSettingsApiNotificationsSettingsPut({
+        body: { discord_enabled: enabled }
+      });
 
-      if (!response.ok) throw new Error("update failed");
-      setNotificationsEnabled(enabled);
+      if (response?.response?.ok) {
+        setNotificationsEnabled(enabled);
+      } else {
+        throw new Error("update failed");
+      }
     } catch {
       setNotificationsEnabled((v) => !v); // revert
     } finally {
@@ -321,7 +315,7 @@ export function DashboardHeader({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -364,6 +358,15 @@ export function DashboardHeader({
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Admin Badge */}
+        {user?.is_admin && (
+          <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-[rgba(242,212,138,0.1)] border border-[#f2d48a] rounded">
+            <span className="text-[#f2d48a] text-[8px] tracking-[0.2em] uppercase font-bold">
+              🛡 ADMIN
+            </span>
+          </div>
+        )}
+
         <div className="relative">
           <button
             ref={accountButtonRef}

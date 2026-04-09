@@ -1,4 +1,13 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+/**
+ * Auth cookies are issued by the backend origin (`http://localhost:8000` by default).
+ * To keep cookie auth stable, default to calling the backend directly.
+ * Set `NEXT_PUBLIC_API_PROXY=1` only when you explicitly want to use the Next.js rewrite proxy.
+ */
+export const API_BASE_URL =
+  process.env.NODE_ENV === "development" &&
+  process.env.NEXT_PUBLIC_API_PROXY === "1"
+    ? "/api-backend"
+    : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export const MONITOR_TYPES = {
   SIMPLE: 'simple',

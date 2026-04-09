@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils/ui";
 import { AlertModal } from "@/components/ui/ConfirmModal";
+import { API_BASE_URL } from "@/lib/constants";
 
 interface BulkExportModalProps {
   isOpen: boolean;
@@ -25,7 +26,7 @@ export function BulkExportModal({
     
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/export/monitors/bulk?format=${format}&days=${days}`,
+        `${API_BASE_URL}/api/export/monitors/bulk?format=${format}&days=${days}`,
         {
           credentials: 'include', // Use cookies for authentication
         }

@@ -15,7 +15,16 @@ export default function AuthCallback() {
   useEffect(() => {
     const verifyAuth = async () => {
       try {
-        const response = await getCurrentUserInfoAuthMeGet();
+        let response: Awaited<ReturnType<typeof getCurrentUserInfoAuthMeGet>> | undefined;
+
+        // Retry briefly to avoid transient timing issues while the cookie settles.
+        for (let attempt = 0; attempt < 3; attempt++) {
+          response = await getCurrentUserInfoAuthMeGet();
+          if (response?.response?.ok) {
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
 
         if (response?.response?.ok) {
           setTone("ok");

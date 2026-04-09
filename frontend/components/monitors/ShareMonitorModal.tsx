@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils/ui";
+import { enableMonitorSharingMonitorsMonitorIdSharePost, disableMonitorSharingMonitorsMonitorIdShareDelete } from "@/lib/api/sdk.gen";
 
 interface ShareMonitorModalProps {
   isOpen: boolean;
@@ -78,29 +79,23 @@ export function ShareMonitorModal({ isOpen, monitorId, monitorName, onClose }: S
         requestBody.password = shareSettings.password.trim();
       }
 
-      const response = await fetch(`http://localhost:8000/monitors/${monitorId}/share`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
+      const response = await enableMonitorSharingMonitorsMonitorIdSharePost({
+        path: { monitor_id: monitorId },
+        body: requestBody
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || "Failed to update settings");
+      if (response?.response?.ok && response.data) {
+        setShareUrl(response.data.share_url);
+        setIsPublic(true);
+        setShareInfo({
+          expiresAt: response.data.expires_at,
+          hasPassword: response.data.has_password
+        });
+        setIsEditing(false);
+        setShareSettings({ expiresInHours: null, password: "" });
+      } else {
+        throw new Error("Failed to update settings");
       }
-
-      const data = await response.json();
-      setShareUrl(data.share_url);
-      setIsPublic(true);
-      setShareInfo({
-        expiresAt: data.expires_at,
-        hasPassword: data.has_password
-      });
-      setIsEditing(false);
-      setShareSettings({ expiresInHours: null, password: "" });
     } catch (err: any) {
       setError(err.message || "Failed to update settings");
     } finally {
@@ -123,27 +118,21 @@ export function ShareMonitorModal({ isOpen, monitorId, monitorName, onClose }: S
         requestBody.password = shareSettings.password.trim();
       }
 
-      const response = await fetch(`http://localhost:8000/monitors/${monitorId}/share`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
+      const response = await enableMonitorSharingMonitorsMonitorIdSharePost({
+        path: { monitor_id: monitorId },
+        body: requestBody
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || "Failed to enable sharing");
+      if (response?.response?.ok && response.data) {
+        setShareUrl(response.data.share_url);
+        setIsPublic(true);
+        setShareInfo({
+          expiresAt: response.data.expires_at,
+          hasPassword: response.data.has_password
+        });
+      } else {
+        throw new Error("Failed to enable sharing");
       }
-
-      const data = await response.json();
-      setShareUrl(data.share_url);
-      setIsPublic(true);
-      setShareInfo({
-        expiresAt: data.expires_at,
-        hasPassword: data.has_password
-      });
     } catch (err: any) {
       setError(err.message || "Failed to enable sharing");
     } finally {
@@ -156,22 +145,17 @@ export function ShareMonitorModal({ isOpen, monitorId, monitorName, onClose }: S
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:8000/monitors/${monitorId}/share`, {
-        method: "DELETE",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await disableMonitorSharingMonitorsMonitorIdShareDelete({
+        path: { monitor_id: monitorId }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || "Failed to disable sharing");
+      if (response?.response?.ok) {
+        setShareUrl(null);
+        setIsPublic(false);
+        setShareInfo({ expiresAt: null, hasPassword: false });
+      } else {
+        throw new Error("Failed to disable sharing");
       }
-
-      setShareUrl(null);
-      setIsPublic(false);
-      setShareInfo({ expiresAt: null, hasPassword: false });
     } catch (err: any) {
       setError(err.message || "Failed to disable sharing");
     } finally {

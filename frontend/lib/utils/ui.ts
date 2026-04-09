@@ -36,6 +36,7 @@ export function iconGlyph(
     | "gauge"
     | "alert"
     | "timer"
+    | "shield"
 ) {
   switch (icon) {
     case "home":
@@ -56,6 +57,8 @@ export function iconGlyph(
       return "!";
     case "timer":
       return "⧖";
+    case "shield":
+      return "🛡";
     default:
       return "•";
   }

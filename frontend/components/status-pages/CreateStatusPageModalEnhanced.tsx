@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils/ui";
 import { useMonitors } from "@/lib/hooks/useMonitors";
+import { createStatusPageApiStatusPagesPost } from "@/lib/api/sdk.gen";
 import type { MonitorResponse } from "@/lib/api/types.gen";
 
 interface CreateStatusPageModalProps {
@@ -110,11 +111,8 @@ export function CreateStatusPageModalEnhanced({ isOpen, onClose, onSuccess }: Cr
     setError(null);
 
     try {
-      const response = await fetch("http://localhost:8000/api/status-pages", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const response = await createStatusPageApiStatusPagesPost({
+        body: {
           name: name.trim(),
           slug: slug.trim(),
           description: description.trim() || null,
@@ -126,16 +124,15 @@ export function CreateStatusPageModalEnhanced({ isOpen, onClose, onSuccess }: Cr
           layout,
           branding_primary_color: primaryColor,
           monitor_ids: selectedMonitors
-        }),
+        }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to create status page");
+      if (response?.response?.ok) {
+        onSuccess();
+        handleClose();
+      } else {
+        throw new Error("Failed to create status page");
       }
-
-      onSuccess();
-      handleClose();
     } catch (err: any) {
       setError(err.message || "Failed to create status page");
     } finally {

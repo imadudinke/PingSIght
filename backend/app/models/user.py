@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, String, Boolean, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Uuid
 
@@ -15,6 +15,8 @@ class User(Base):
     id: Mapped[Uuid] = mapped_column(Uuid, primary_key=True, default=uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default='false')
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default='true')
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
     monitors: Mapped[list["Monitor"]] = relationship("Monitor", back_populates="user")

@@ -17,6 +17,7 @@ from .api.status import router as status_router
 from .api.notifications import router as notifications_router
 from .api.status_pages import router as status_pages_router
 from .api.export import router as export_router
+from .api.admin import router as admin_router
 from .core.security import get_current_user
 from .core.config import get_settings
 from .models.user import User
@@ -59,15 +60,15 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Add CORS middleware with environment-aware configuration
 # Parse allowed origins from environment variable (comma-separated list)
 # In production: Only allow specific origins from CORS_ORIGINS
-# In development: Allow all origins for flexibility
+# In development: Use specific origins from CORS_ORIGINS (wildcard doesn't work with credentials)
 if settings.environment == "production":
     # Production: Use specific origins from environment variable
     allowed_origins = settings.cors_origins_list
     logger.info(f"CORS configured for production with origins: {allowed_origins}")
 else:
-    # Development: Allow all origins for local development
-    allowed_origins = ["*"]
-    logger.info("CORS configured for development (allowing all origins)")
+    # Development: Use specific origins (wildcard "*" doesn't work with credentials=True)
+    allowed_origins = settings.cors_origins_list
+    logger.info(f"CORS configured for development with origins: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -86,6 +87,7 @@ app.include_router(status_router, tags=["status"])
 app.include_router(notifications_router, prefix="/api", tags=["notifications"])
 app.include_router(status_pages_router, prefix="/api", tags=["status_pages"])
 app.include_router(export_router, prefix="/api", tags=["export"])
+app.include_router(admin_router, prefix="/api", tags=["admin"])
 
 
 @app.on_event("startup")

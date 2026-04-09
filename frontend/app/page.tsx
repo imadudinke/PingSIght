@@ -256,6 +256,14 @@ export default function Home() {
                   INITIATE_OBSERVER
                 </PrimaryButton>
                 <GhostButton onClick={() => router.push("/docs")}>READ_PROTOCOL</GhostButton>
+                {process.env.NODE_ENV === 'development' && (
+                  <button
+                    onClick={() => window.location.href = '/api-backend/auth/login'}
+                    className="h-[46px] px-8 border border-[#f2d48a] text-[#f2d48a] hover:bg-[#f2d48a] hover:text-[#0b0c0e] transition text-[11px] tracking-[0.26em] uppercase font-mono"
+                  >
+                    TEST_GOOGLE_LOGIN
+                  </button>
+                )}
               </div>
 
               <div className="mt-8 sm:mt-10 border-t border-[#1b1d20] pt-5 sm:pt-6 grid grid-cols-3 gap-4 sm:gap-6 lg:gap-8">

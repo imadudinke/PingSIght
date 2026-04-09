@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn, iconGlyph } from "@/lib/utils/ui";
 import { AlertModal } from "@/components/ui/ConfirmModal";
 
@@ -12,13 +13,15 @@ function SidebarItem({
   href,
   onClick,
   onItemClick,
+  isAdmin = false,
 }: {
   active?: boolean;
-  icon: "home" | "pulse" | "heart" | "page" | "gear";
+  icon: "home" | "pulse" | "heart" | "page" | "gear" | "shield";
   label: string;
   href?: string;
   onClick?: () => void;
   onItemClick?: () => void;
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
 
@@ -43,7 +46,8 @@ function SidebarItem({
         "transition-colors",
         active
           ? "bg-[rgba(255,255,255,0.045)] text-[#d6d7da]"
-          : "text-[#6f6f6f] hover:text-[#d6d7da]"
+          : "text-[#6f6f6f] hover:text-[#d6d7da]",
+        isAdmin && "border-l-2 border-[#f2d48a] bg-[rgba(242,212,138,0.05)]"
       )}
     >
       <span
@@ -52,8 +56,15 @@ function SidebarItem({
           active ? "bg-[#f2d48a]" : "bg-transparent"
         )}
       />
-      <span className="opacity-90">{iconGlyph(icon)}</span>
-      <span>{label}</span>
+      <span className={cn("opacity-90", isAdmin && "text-[#f2d48a]")}>
+        {iconGlyph(icon)}
+      </span>
+      <span className={isAdmin ? "text-[#f2d48a]" : ""}>{label}</span>
+      {isAdmin && (
+        <span className="ml-auto text-[#f2d48a] text-[8px] tracking-[0.2em] uppercase">
+          ADMIN
+        </span>
+      )}
     </button>
   );
 }
@@ -89,6 +100,7 @@ export function DashboardSidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useAuth();
   const [comingSoonAlert, setComingSoonAlert] = useState<string | null>(null);
 
   // Close sidebar on escape key
@@ -121,6 +133,7 @@ export function DashboardSidebar({
   const isHeartbeats = pathname?.startsWith("/dashboard/heartbeats");
   const isStatusPages = pathname?.startsWith("/dashboard/status-pages");
   const isSettings = pathname?.startsWith("/dashboard/settings");
+  const isAdmin = pathname?.startsWith("/dashboard/admin");
 
   const handleNewMonitor = () => {
     if (onNewMonitor) {
@@ -242,6 +255,24 @@ export function DashboardSidebar({
             href="/dashboard/settings"
             onItemClick={handleItemClick}
           />
+          
+          {/* Admin Section */}
+          {user?.is_admin && (
+            <>
+              <div className="my-4 px-4">
+                <div className="border-t border-[#1b1d20]"></div>
+              </div>
+              <SidebarItem 
+                active={isAdmin} 
+                icon="shield" 
+                label="ADMIN_PANEL" 
+                href="/dashboard/admin"
+                onItemClick={handleItemClick}
+                isAdmin={true}
+              />
+            </>
+          )}
+          
           <button
             onClick={handleNewMonitor}
             className={cn(

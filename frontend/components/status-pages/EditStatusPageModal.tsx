@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { updateStatusPageApiStatusPagesStatusPageIdPut } from "@/lib/api/sdk.gen";
 
 interface EditStatusPageModalProps {
   statusPage: any;
@@ -38,24 +39,16 @@ export function EditStatusPageModal({ statusPage, onClose, onSuccess }: EditStat
     setError(null);
 
     try {
-      const response = await fetch(
-        `http://localhost:8000/api/status-pages/${statusPage.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(formData),
-        }
-      );
+      const response = await updateStatusPageApiStatusPagesStatusPageIdPut({
+        path: { status_page_id: statusPage.id },
+        body: formData
+      });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || "Failed to update status page");
+      if (response?.response?.ok) {
+        onSuccess();
+      } else {
+        throw new Error("Failed to update status page");
       }
-
-      onSuccess();
     } catch (err: any) {
       setError(err.message);
     } finally {

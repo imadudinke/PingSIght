@@ -78,17 +78,23 @@ async def get_current_user(
     return user
 
 
-def get_current_user_email(authorization: str = Depends(api_key_header)) -> str:
+def get_current_user_email(
+    authorization: Optional[str] = Depends(api_key_header),
+    access_token: Optional[str] = Cookie(None),
+) -> str:
     """Lightweight version that only returns email without DB lookup"""
-    
-    # Extract token from "Bearer <token>" format
-    if not authorization.startswith("Bearer "):
+
+    token: Optional[str] = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+    elif access_token:
+        token = access_token
+
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header format. Use: Bearer <token>"
+            detail="Could not validate credentials",
         )
-    
-    token = authorization.replace("Bearer ", "")
     
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])

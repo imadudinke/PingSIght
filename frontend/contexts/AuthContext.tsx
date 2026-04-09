@@ -1,15 +1,16 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { client } from '@/lib/api/client.gen';
 import { logout as logoutUtil } from '@/lib/utils/auth';
 import { getCurrentUserInfoAuthMeGet } from '@/lib/api/sdk.gen';
+import { API_BASE_URL } from '@/lib/constants';
 
 interface User {
   id: string;
   email: string;
   is_active: boolean;
+  is_admin?: boolean;
 }
 
 interface AuthContextType {
@@ -19,22 +20,21 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
 
   const logout = useCallback(() => {
     logoutUtil();
     setUser(null);
     client.setConfig({
-      baseUrl: API_URL,
+      baseUrl: API_BASE_URL,
+      credentials: 'include',
     });
   }, []);
 
@@ -45,8 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response?.response?.ok && response.data) {
         setUser(response.data as User);
       } else if (response?.response?.status === 401) {
-        console.log('Unauthorized');
+        console.log('Unauthorized - redirecting to login');
         setUser(null);
+        // If we're on a dashboard page and get 401, redirect to home
+        if (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard')) {
+          window.location.href = '/';
+        }
       } else {
         console.error('Failed to fetch user, status:', response?.response?.status);
         setUser(null);
@@ -54,15 +58,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Failed to fetch user:', error);
       setUser(null);
+      // If we're on a dashboard page and get an error, redirect to home
+      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard')) {
+        window.location.href = '/';
+      }
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    setIsLoading(true);
+    await fetchCurrentUser();
+  }, [fetchCurrentUser]);
+
   useEffect(() => {
-    // Configure client base URL
+    // Configure client with proper base URL and credentials
     client.setConfig({
-      baseUrl: API_URL,
+      baseUrl: API_BASE_URL,
+      credentials: 'include',
     });
 
     // Check if user is already logged in via cookie
@@ -74,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     formData.append('username', username);
     formData.append('password', password);
 
-    const response = await fetch(`${API_URL}/api/auth/login`, {
+    const response = await fetch(`${API_BASE_URL}/auth/login/password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -93,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (email: string, password: string) => {
-    const response = await fetch(`${API_URL}/api/auth/register`, {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -117,7 +131,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading, 
       login, 
       register, 
-      logout
+      logout,
+      refreshUser
     }}>
       {children}
     </AuthContext.Provider>

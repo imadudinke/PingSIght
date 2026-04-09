@@ -12,6 +12,7 @@ import { CreateStatusPageModalEnhanced } from "@/components/status-pages/CreateS
 import { StatusPageCard } from "@/components/status-pages/StatusPageCard";
 import { StatusPageCardSkeleton } from "@/components/ui/Skeleton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { listStatusPagesApiStatusPagesGet, deleteStatusPageApiStatusPagesStatusPageIdDelete } from "@/lib/api/sdk.gen";
 
 export default function StatusPagesPage() {
   const router = useRouter();
@@ -37,14 +38,28 @@ export default function StatusPagesPage() {
   const fetchStatusPages = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:8000/api/status-pages/", {
-        credentials: "include",
-      });
+      const response = await listStatusPagesApiStatusPagesGet();
 
-      if (response.ok) {
-        const data = await response.json();
-        setStatusPages(data);
+      // Handle both SDK response styles (`fields` and `data`) plus network failures.
+      if (Array.isArray(response)) {
+        setStatusPages(response);
+        return;
       }
+
+      if (response?.response?.ok && Array.isArray(response.data)) {
+        setStatusPages(response.data);
+        return;
+      }
+
+      if (response?.error) {
+        console.error("Failed to fetch status pages:", response.error);
+        return;
+      }
+
+      console.error(
+        "Failed to fetch status pages:",
+        response?.response?.status ?? "unknown_error"
+      );
     } catch (error) {
       console.error("Failed to fetch status pages:", error);
     } finally {
@@ -60,13 +75,19 @@ export default function StatusPagesPage() {
     if (!deleteConfirm) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/api/status-pages/${deleteConfirm.id}`, {
-        method: "DELETE",
-        credentials: "include",
+      const response = await deleteStatusPageApiStatusPagesStatusPageIdDelete({
+        path: { status_page_id: deleteConfirm.id }
       });
 
-      if (response.ok) {
+      if (response?.response?.ok) {
         fetchStatusPages();
+      } else if (response?.error) {
+        console.error("Failed to delete status page:", response.error);
+      } else {
+        console.error(
+          "Failed to delete status page:",
+          response?.response?.status ?? "unknown_error"
+        );
       }
     } catch (error) {
       console.error("Failed to delete status page:", error);

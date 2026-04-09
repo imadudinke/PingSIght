@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Authentication</title>
+</head>
+<body>
+    <h1>Test Authentication</h1>
+    <p>Click the button below to test Google OAuth login:</p>
+    <button onclick="window.location.href='http://localhost:8000/auth/login'">
+        Login with Google
+    </button>
+    
+    <hr>
+    
+    <h2>Test API Call</h2>
+    <button onclick="testApiCall()">Test /auth/me</button>
+    <div id="result"></div>
+    
+    <script>
+        async function testApiCall() {
+            try {
+                const response = await fetch('/api-backend/auth/me', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                document.getElementById('result').innerHTML = 
+                    '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    '<pre>Error: ' + error.message + '</pre>';
+            }
+        }
+    </script>
+</body>
+</html>
