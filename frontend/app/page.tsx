@@ -113,37 +113,12 @@ export default function Home() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // All hooks must be called before any conditional returns
-  const navCta = useMemo(() => {
-    if (isAuthenticated) {
-      return (
-        <button
-          onClick={logout}
-          className={cn(
-            "h-[34px] px-5",
-            "border border-[#ff6a6a] text-[#ff6a6a]",
-            "hover:bg-[#ff6a6a] hover:text-[#0b0c0e] transition",
-            "text-[11px] tracking-[0.26em] uppercase font-mono"
-          )}
-        >
-          LOGOUT
-        </button>
-      );
-    }
-    return (
-      <Link
-        href="/login"
-        className={cn(
-          "h-[34px] px-5 flex items-center",
-          "border border-[#b9c7ff] text-[#b9c7ff]",
-          "hover:bg-[#b9c7ff] hover:text-[#0b0c0e] transition",
-          "text-[11px] tracking-[0.26em] uppercase font-mono"
-        )}
-      >
-        LOGIN
-      </Link>
-    );
-  }, [isAuthenticated, logout]);
+  // Prevent hydration mismatch by not rendering auth-dependent content on server
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) router.push("/dashboard");
@@ -257,7 +232,33 @@ export default function Home() {
               className="hidden md:block w-[180px] lg:w-[240px] h-[32px] sm:h-[34px] px-3 bg-[rgba(0,0,0,0.28)] border border-[#2a2d31] text-[10px] sm:text-[11px] tracking-[0.20em] uppercase placeholder:text-[#60646b] focus:outline-none focus:border-[#b9c7ff]"
               placeholder="QUERY..."
             />
-            {navCta}
+            {mounted && (
+              isAuthenticated ? (
+                <button
+                  onClick={logout}
+                  className={cn(
+                    "h-[34px] px-5",
+                    "border border-[#ff6a6a] text-[#ff6a6a]",
+                    "hover:bg-[#ff6a6a] hover:text-[#0b0c0e] transition",
+                    "text-[11px] tracking-[0.26em] uppercase font-mono"
+                  )}
+                >
+                  LOGOUT
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  className={cn(
+                    "h-[34px] px-5 flex items-center",
+                    "border border-[#b9c7ff] text-[#b9c7ff]",
+                    "hover:bg-[#b9c7ff] hover:text-[#0b0c0e] transition",
+                    "text-[11px] tracking-[0.26em] uppercase font-mono"
+                  )}
+                >
+                  LOGIN
+                </Link>
+              )
+            )}
           </div>
         </div>
       </header>
