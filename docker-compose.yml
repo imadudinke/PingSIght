@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: pingsight-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pingsight
+      POSTGRES_PASSWORD: pingsight_password
+      POSTGRES_DB: pingsight
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pingsight -d pingsight"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pingsight-backend
+    restart: unless-stopped
+    environment:
+      # If you're using async SQLAlchemy (AsyncSession), keep asyncpg:
+      DATABASE_URL: postgresql+asyncpg://pingsight:pingsight_password@db:5432/pingsight
+      FRONTEND_URL: http://localhost:3000
+      ENVIRONMENT: development
+
+      # Secrets (put these in .env ideally)
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-change-me}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8000/auth/callback}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/logs:/app/logs
+
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pingsight-migrate
+    environment:
+      DATABASE_URL: postgresql+asyncpg://pingsight:pingsight_password@db:5432/pingsight
+    depends_on:
+      db:
+        condition: service_healthy
+    command: alembic upgrade head
+    restart: "no"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pingsight-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
