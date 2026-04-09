@@ -88,8 +88,8 @@ export function ShareMonitorModal({ isOpen, monitorId, monitorName, onClose }: S
         setShareUrl(response.data.share_url);
         setIsPublic(true);
         setShareInfo({
-          expiresAt: response.data.expires_at,
-          hasPassword: response.data.has_password
+          expiresAt: response.data.expires_at ?? null,
+          hasPassword: response.data.has_password ?? false
         });
         setIsEditing(false);
         setShareSettings({ expiresInHours: null, password: "" });
@@ -127,8 +127,8 @@ export function ShareMonitorModal({ isOpen, monitorId, monitorName, onClose }: S
         setShareUrl(response.data.share_url);
         setIsPublic(true);
         setShareInfo({
-          expiresAt: response.data.expires_at,
-          hasPassword: response.data.has_password
+          expiresAt: response.data.expires_at ?? null,
+          hasPassword: response.data.has_password ?? false
         });
       } else {
         throw new Error("Failed to enable sharing");

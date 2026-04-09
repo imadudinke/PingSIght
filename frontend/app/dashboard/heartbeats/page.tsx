@@ -19,7 +19,7 @@ import { EditMonitorModal } from "@/components/monitors/EditMonitorModal";
 import { DeleteConfirmModal } from "@/components/monitors/DeleteConfirmModal";
 import { ShareMonitorModal } from "@/components/monitors/ShareMonitorModal";
 import { MonitorActionsMenu } from "@/components/monitors/MonitorActionsMenu";
-import { MonitorRowSkeleton } from "@/components/ui/Skeleton";
+import { MonitorRowSkeleton } from "@/components/ui/skeleton";
 import type { MonitorResponse } from "@/lib/api/types.gen";
 
 export default function HeartbeatsPage() {

@@ -10,7 +10,7 @@ import { DashboardHeader } from "@/components/dashboard/Header";
 import { DashboardFooter } from "@/components/dashboard/Footer";
 import { CreateStatusPageModalEnhanced } from "@/components/status-pages/CreateStatusPageModalEnhanced";
 import { StatusPageCard } from "@/components/status-pages/StatusPageCard";
-import { StatusPageCardSkeleton } from "@/components/ui/Skeleton";
+import { StatusPageCardSkeleton } from "@/components/ui/skeleton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { listStatusPagesApiStatusPagesGet, deleteStatusPageApiStatusPagesStatusPageIdDelete } from "@/lib/api/sdk.gen";
 

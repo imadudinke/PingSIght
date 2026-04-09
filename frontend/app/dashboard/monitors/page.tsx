@@ -21,7 +21,7 @@ import { DeleteConfirmModal } from "@/components/monitors/DeleteConfirmModal";
 import { ShareMonitorModal } from "@/components/monitors/ShareMonitorModal";
 import { BulkExportModal } from "@/components/monitors/BulkExportModal";
 import { MonitorActionsMenu } from "@/components/monitors/MonitorActionsMenu";
-import { MonitorRowSkeleton } from "@/components/ui/Skeleton";
+import { MonitorRowSkeleton } from "@/components/ui/skeleton";
 import { WorldMap } from "@/components/dashboard/WorldMap";
 import type { MonitorResponse } from "@/lib/api/types.gen";
 

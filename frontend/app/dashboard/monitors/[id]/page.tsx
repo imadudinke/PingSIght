@@ -14,7 +14,7 @@ import { DashboardFooter } from "@/components/dashboard/Footer";
 import { HeartbeatChart } from "@/components/dashboard/HeartbeatChart";
 import { ShareMonitorModal } from "@/components/monitors/ShareMonitorModal";
 import { ExportMonitorModal } from "@/components/monitors/ExportMonitorModal";
-import { MetricCardSkeleton, HeartbeatRowSkeleton, DeepTraceSkeleton, ChartSkeleton, Skeleton } from "@/components/ui/Skeleton";
+import { MetricCardSkeleton, HeartbeatRowSkeleton, DeepTraceSkeleton, ChartSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { getDeepTrace, getSSLIssuer, getSSLCommonName, calculateP95Latency, calculateP99Latency, calculateDowntimeDuration } from "@/lib/utils/monitor";
 
 type MonitorDetail = GetMonitorMonitorsMonitorIdGetResponses[200];

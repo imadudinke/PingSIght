@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { Suspense, useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,14 +9,20 @@ function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-function Panel({ className, children }: { className?: string; children: React.ReactNode }) {
+function Panel({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div
       className={cn(
         "relative border border-[#1b1d20]",
         "bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))]",
         "shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
-        className
+        className,
       )}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.06),transparent_55%)] opacity-[0.35]" />
@@ -25,13 +31,34 @@ function Panel({ className, children }: { className?: string; children: React.Re
   );
 }
 
-function Metric({ value, label, tone }: { value: string; label: string; tone: "blue" | "sand" | "white" }) {
+function Metric({
+  value,
+  label,
+  tone,
+}: {
+  value: string;
+  label: string;
+  tone: "blue" | "sand" | "white";
+}) {
   const color =
-    tone === "blue" ? "text-[#b9c7ff]" : tone === "sand" ? "text-[#f2d48a]" : "text-[#d6d7da]";
+    tone === "blue"
+      ? "text-[#b9c7ff]"
+      : tone === "sand"
+        ? "text-[#f2d48a]"
+        : "text-[#d6d7da]";
   return (
     <div>
-      <div className={cn("text-[22px] leading-none font-semibold tracking-tight", color)}>{value}</div>
-      <div className="mt-2 text-[#5f636a] text-[10px] tracking-[0.28em] uppercase">{label}</div>
+      <div
+        className={cn(
+          "text-[22px] leading-none font-semibold tracking-tight",
+          color,
+        )}
+      >
+        {value}
+      </div>
+      <div className="mt-2 text-[#5f636a] text-[10px] tracking-[0.28em] uppercase">
+        {label}
+      </div>
     </div>
   );
 }
@@ -50,7 +77,7 @@ function GhostButton({
         "h-[46px] px-8",
         "border border-[#2a2d31] bg-[rgba(255,255,255,0.02)]",
         "text-[#d6d7da] hover:text-[#b9c7ff] hover:border-[#b9c7ff] transition",
-        "text-[11px] tracking-[0.26em] uppercase font-mono"
+        "text-[11px] tracking-[0.26em] uppercase font-mono",
       )}
     >
       {children}
@@ -72,7 +99,7 @@ function PrimaryButton({
         "h-[46px] px-8",
         "bg-[#b9c7ff] text-[#0b0c0e] border border-[#c8d2ff]",
         "hover:brightness-95 transition",
-        "text-[11px] tracking-[0.26em] uppercase font-mono font-semibold"
+        "text-[11px] tracking-[0.26em] uppercase font-mono font-semibold",
       )}
     >
       {children}
@@ -80,12 +107,20 @@ function PrimaryButton({
   );
 }
 
-function TopTab({ active, children, href }: { active?: boolean; children: React.ReactNode; href?: string }) {
+function TopTab({
+  active,
+  children,
+  href,
+}: {
+  active?: boolean;
+  children: React.ReactNode;
+  href?: string;
+}) {
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    const target = document.querySelector(href || '');
+    const target = document.querySelector(href || "");
     if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
@@ -96,16 +131,34 @@ function TopTab({ active, children, href }: { active?: boolean; children: React.
       className={cn(
         "relative pt-[2px] pb-[10px]",
         "text-[11px] tracking-[0.26em] uppercase font-mono cursor-pointer",
-        active ? "text-[#f2d48a]" : "text-[#6f6f6f] hover:text-[#d6d7da] transition"
+        active
+          ? "text-[#f2d48a]"
+          : "text-[#6f6f6f] hover:text-[#d6d7da] transition",
       )}
     >
       {children}
-      {active && <span className="absolute left-0 right-0 -bottom-[1px] h-[2px] bg-[#f2d48a]" />}
+      {active && (
+        <span className="absolute left-0 right-0 -bottom-[1px] h-[2px] bg-[#f2d48a]" />
+      )}
     </a>
   );
 }
 
 export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0b0c0e] flex items-center justify-center">
+        <div className="text-[#6f6f6f] text-[11px] tracking-[0.26em] uppercase">
+          LOADING...
+        </div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>("overview");
 
@@ -142,14 +195,17 @@ export default function Home() {
   // Scroll spy effect to update active section
   useEffect(() => {
     const handleScroll = () => {
-      const sections = ['overview', 'capabilities', 'diagnostics'];
+      const sections = ["overview", "capabilities", "diagnostics"];
       const scrollPosition = window.scrollY + 100; // Offset for header
 
       for (const sectionId of sections) {
         const section = document.getElementById(sectionId);
         if (section) {
           const { offsetTop, offsetHeight } = section;
-          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
+          if (
+            scrollPosition >= offsetTop &&
+            scrollPosition < offsetTop + offsetHeight
+          ) {
             setActiveSection(sectionId);
             break;
           }
@@ -157,10 +213,10 @@ export default function Home() {
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
     handleScroll(); // Call once on mount
 
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
@@ -183,7 +239,9 @@ export default function Home() {
           <Panel className="w-full sm:w-[420px]">
             <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff6a6a]" />
             <div className="px-5 py-4 flex items-start gap-4">
-              <div className="text-[#ff6a6a] text-[12px] leading-none pt-1">!</div>
+              <div className="text-[#ff6a6a] text-[12px] leading-none pt-1">
+                !
+              </div>
               <div className="flex-1">
                 <div className="text-[#ff6a6a] text-[10px] tracking-[0.28em] uppercase">
                   ERROR
@@ -222,9 +280,21 @@ export default function Home() {
           </div>
 
           <nav className="hidden lg:flex items-center gap-7">
-            <TopTab active={activeSection === "overview"} href="#overview">OBSERVATORY</TopTab>
-            <TopTab active={activeSection === "capabilities"} href="#capabilities">CAPABILITIES</TopTab>
-            <TopTab active={activeSection === "diagnostics"} href="#diagnostics">DIAGNOSTICS</TopTab>
+            <TopTab active={activeSection === "overview"} href="#overview">
+              OBSERVATORY
+            </TopTab>
+            <TopTab
+              active={activeSection === "capabilities"}
+              href="#capabilities"
+            >
+              CAPABILITIES
+            </TopTab>
+            <TopTab
+              active={activeSection === "diagnostics"}
+              href="#diagnostics"
+            >
+              DIAGNOSTICS
+            </TopTab>
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -232,15 +302,15 @@ export default function Home() {
               className="hidden md:block w-[180px] lg:w-[240px] h-[32px] sm:h-[34px] px-3 bg-[rgba(0,0,0,0.28)] border border-[#2a2d31] text-[10px] sm:text-[11px] tracking-[0.20em] uppercase placeholder:text-[#60646b] focus:outline-none focus:border-[#b9c7ff]"
               placeholder="QUERY..."
             />
-            {mounted && (
-              isAuthenticated ? (
+            {mounted &&
+              (isAuthenticated ? (
                 <button
                   onClick={logout}
                   className={cn(
                     "h-[34px] px-5",
                     "border border-[#ff6a6a] text-[#ff6a6a]",
                     "hover:bg-[#ff6a6a] hover:text-[#0b0c0e] transition",
-                    "text-[11px] tracking-[0.26em] uppercase font-mono"
+                    "text-[11px] tracking-[0.26em] uppercase font-mono",
                   )}
                 >
                   LOGOUT
@@ -252,19 +322,21 @@ export default function Home() {
                     "h-[34px] px-5 flex items-center",
                     "border border-[#b9c7ff] text-[#b9c7ff]",
                     "hover:bg-[#b9c7ff] hover:text-[#0b0c0e] transition",
-                    "text-[11px] tracking-[0.26em] uppercase font-mono"
+                    "text-[11px] tracking-[0.26em] uppercase font-mono",
                   )}
                 >
                   LOGIN
                 </Link>
-              )
-            )}
+              ))}
           </div>
         </div>
       </header>
 
       {/* HERO (Figma composition) */}
-      <main id="overview" className="pt-[72px] sm:pt-[88px] lg:pt-[112px] pb-12 sm:pb-16 lg:pb-20">
+      <main
+        id="overview"
+        className="pt-[72px] sm:pt-[88px] lg:pt-[112px] pb-12 sm:pb-16 lg:pb-20"
+      >
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-[#5f636a] text-[9px] sm:text-[10px] tracking-[0.32em] uppercase">
             SYSTEM_IDENTITY: PINGSIGHT K-20
@@ -280,18 +352,18 @@ export default function Home() {
               </h1>
 
               <div className="mt-6 sm:mt-8 max-w-[520px] text-[#6f6f6f] text-[12px] sm:text-[13px] leading-relaxed">
-                A schematic synthesis of global network intelligence. We translate cold telemetry
-                into high-fidelity visibility. Monitor the pulse of the digital void with
-                military-grade precision.
+                A schematic synthesis of global network intelligence. We
+                translate cold telemetry into high-fidelity visibility. Monitor
+                the pulse of the digital void with military-grade precision.
               </div>
 
               <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row flex-wrap gap-3">
                 <Link href="/login">
-                  <PrimaryButton>
-                    INITIATE_OBSERVER
-                  </PrimaryButton>
+                  <PrimaryButton>INITIATE_OBSERVER</PrimaryButton>
                 </Link>
-                <GhostButton onClick={() => router.push("/docs")}>READ_PROTOCOL</GhostButton>
+                <GhostButton onClick={() => router.push("/docs")}>
+                  READ_PROTOCOL
+                </GhostButton>
               </div>
 
               <div className="mt-8 sm:mt-10 border-t border-[#1b1d20] pt-5 sm:pt-6 grid grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
@@ -348,18 +420,21 @@ export default function Home() {
 
           <div className="mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <Panel className="p-6 sm:p-8">
-              <div className="text-[#b9c7ff] text-[9px] sm:text-[10px] tracking-[0.28em] uppercase">MODULE_01</div>
+              <div className="text-[#b9c7ff] text-[9px] sm:text-[10px] tracking-[0.28em] uppercase">
+                MODULE_01
+              </div>
               <div className="mt-3 text-[#d6d7da] text-[18px] sm:text-[20px] lg:text-[22px] font-bold uppercase tracking-tight">
                 SIMPLE_MONITORING
               </div>
               <div className="mt-3 sm:mt-4 text-[#6f6f6f] text-[11px] sm:text-[12px] leading-relaxed">
-                Monitor endpoints with status validation, timing, SSL expiry and domain health. Designed for APIs and
-                public sites.
+                Monitor endpoints with status validation, timing, SSL expiry and
+                domain health. Designed for APIs and public sites.
               </div>
 
               <div className="mt-5 sm:mt-6 space-y-2 sm:space-y-3 text-[10px] sm:text-[11px] tracking-[0.14em] text-[#8b8f96]">
                 <div className="flex items-center gap-3">
-                  <span className="text-[#b9c7ff]">✓</span> HTTP_STATUS + LATENCY
+                  <span className="text-[#b9c7ff]">✓</span> HTTP_STATUS +
+                  LATENCY
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-[#b9c7ff]">✓</span> SSL_EXPIRY SIGNALING
@@ -371,23 +446,29 @@ export default function Home() {
             </Panel>
 
             <Panel className="p-6 sm:p-8">
-              <div className="text-[#f2d48a] text-[9px] sm:text-[10px] tracking-[0.28em] uppercase">MODULE_02</div>
+              <div className="text-[#f2d48a] text-[9px] sm:text-[10px] tracking-[0.28em] uppercase">
+                MODULE_02
+              </div>
               <div className="mt-3 text-[#d6d7da] text-[18px] sm:text-[20px] lg:text-[22px] font-bold uppercase tracking-tight">
                 SCENARIO_MONITORING
               </div>
               <div className="mt-3 sm:mt-4 text-[#6f6f6f] text-[11px] sm:text-[12px] leading-relaxed">
-                Multi-step journey tracing with step timing, failure point location and deep request diagnostics.
+                Multi-step journey tracing with step timing, failure point
+                location and deep request diagnostics.
               </div>
 
               <div className="mt-5 sm:mt-6 space-y-2 sm:space-y-3 text-[10px] sm:text-[11px] tracking-[0.14em] text-[#8b8f96]">
                 <div className="flex items-center gap-3">
-                  <span className="text-[#f2d48a]">✓</span> STEP_TIMING BREAKDOWN
+                  <span className="text-[#f2d48a]">✓</span> STEP_TIMING
+                  BREAKDOWN
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[#f2d48a]">✓</span> FAILURE POINT IDENTIFICATION
+                  <span className="text-[#f2d48a]">✓</span> FAILURE POINT
+                  IDENTIFICATION
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[#f2d48a]">✓</span> UP TO 3 STEPS / SCENARIO
+                  <span className="text-[#f2d48a]">✓</span> UP TO 3 STEPS /
+                  SCENARIO
                 </div>
               </div>
             </Panel>
@@ -400,7 +481,7 @@ export default function Home() {
         {/* Ambient glow effects */}
         <div className="absolute top-0 left-1/4 w-[400px] sm:w-[600px] h-[400px] sm:h-[600px] bg-[#b9c7ff] opacity-[0.08] blur-[120px] rounded-full" />
         <div className="absolute bottom-0 right-1/4 w-[350px] sm:w-[500px] h-[350px] sm:h-[500px] bg-[#f2d48a] opacity-[0.06] blur-[100px] rounded-full" />
-        
+
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-8 sm:mb-10 lg:mb-12">
             <div className="text-[#5f636a] text-[9px] sm:text-[10px] tracking-[0.32em] uppercase">
@@ -412,8 +493,9 @@ export default function Home() {
               <span className="text-[#b9c7ff]">INTERFACE</span>
             </div>
             <div className="mt-4 sm:mt-6 text-[#6f6f6f] text-[11px] sm:text-[12px] lg:text-[13px] leading-relaxed max-w-[600px] mx-auto px-4">
-              A precision-engineered dashboard that transforms raw telemetry into actionable intelligence.
-              Real-time monitoring with military-grade clarity.
+              A precision-engineered dashboard that transforms raw telemetry
+              into actionable intelligence. Real-time monitoring with
+              military-grade clarity.
             </div>
           </div>
 
@@ -421,35 +503,35 @@ export default function Home() {
           <div className="relative group">
             {/* Outer glow ring */}
             <div className="absolute -inset-2 sm:-inset-4 bg-gradient-to-r from-[#b9c7ff]/20 via-[#f2d48a]/20 to-[#b9c7ff]/20 rounded-lg blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500" />
-            
+
             {/* Main panel */}
             <Panel className="relative overflow-hidden">
               {/* Top accent bar */}
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#b9c7ff] to-transparent opacity-60" />
-              
+
               {/* Corner indicators - hidden on mobile */}
               <div className="hidden sm:block absolute top-4 left-4 w-3 h-3 border-l-2 border-t-2 border-[#b9c7ff] opacity-40" />
               <div className="hidden sm:block absolute top-4 right-4 w-3 h-3 border-r-2 border-t-2 border-[#b9c7ff] opacity-40" />
               <div className="hidden sm:block absolute bottom-4 left-4 w-3 h-3 border-l-2 border-b-2 border-[#f2d48a] opacity-40" />
               <div className="hidden sm:block absolute bottom-4 right-4 w-3 h-3 border-r-2 border-b-2 border-[#f2d48a] opacity-40" />
-              
+
               {/* Image container */}
               <div className="p-2 sm:p-4 md:p-6 lg:p-8">
                 <div className="relative rounded-sm overflow-hidden border border-[#2a2d31] shadow-2xl">
                   {/* Scanline effect overlay */}
                   <div className="absolute inset-0 bg-[linear-gradient(0deg,transparent_50%,rgba(255,255,255,0.02)_50%)] bg-[length:100%_4px] pointer-events-none z-10 opacity-30" />
-                  
+
                   {/* Image with hover effect */}
                   <img
                     src="/Dashboard-Image.png"
                     alt="PingSight Dashboard Interface"
                     className="w-full h-auto transform transition-transform duration-700 group-hover:scale-[1.02]"
                   />
-                  
+
                   {/* Gradient overlay on hover */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0b0c0e]/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                 </div>
-                
+
                 {/* Info bar below image */}
                 <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 text-[9px] sm:text-[10px] tracking-[0.26em] uppercase">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
@@ -462,7 +544,8 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="text-[#5f636a]">
-                    RESOLUTION: <span className="text-[#d6d7da]">1920×1080</span>
+                    RESOLUTION:{" "}
+                    <span className="text-[#d6d7da]">1920×1080</span>
                   </div>
                 </div>
               </div>
@@ -471,15 +554,23 @@ export default function Home() {
             {/* Floating feature badges - hidden on mobile and tablet */}
             <div className="absolute -left-4 top-1/4 hidden xl:block">
               <Panel className="px-4 py-3 backdrop-blur-md">
-                <div className="text-[#b9c7ff] text-[9px] tracking-[0.28em] uppercase">REAL-TIME</div>
-                <div className="text-[#d6d7da] text-[11px] font-bold">UPDATES</div>
+                <div className="text-[#b9c7ff] text-[9px] tracking-[0.28em] uppercase">
+                  REAL-TIME
+                </div>
+                <div className="text-[#d6d7da] text-[11px] font-bold">
+                  UPDATES
+                </div>
               </Panel>
             </div>
-            
+
             <div className="absolute -right-4 top-1/3 hidden xl:block">
               <Panel className="px-4 py-3 backdrop-blur-md">
-                <div className="text-[#f2d48a] text-[9px] tracking-[0.28em] uppercase">DEEP</div>
-                <div className="text-[#d6d7da] text-[11px] font-bold">ANALYTICS</div>
+                <div className="text-[#f2d48a] text-[9px] tracking-[0.28em] uppercase">
+                  DEEP
+                </div>
+                <div className="text-[#d6d7da] text-[11px] font-bold">
+                  ANALYTICS
+                </div>
               </Panel>
             </div>
           </div>
@@ -488,7 +579,9 @@ export default function Home() {
           <div className="mt-8 sm:mt-10 lg:mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 border border-[#2a2d31] bg-[rgba(185,199,255,0.05)] mb-3 sm:mb-4">
-                <span className="text-[#b9c7ff] text-[18px] sm:text-[20px]">⚡</span>
+                <span className="text-[#b9c7ff] text-[18px] sm:text-[20px]">
+                  ⚡
+                </span>
               </div>
               <div className="text-[#d6d7da] text-[11px] sm:text-[12px] tracking-[0.22em] uppercase font-bold">
                 INSTANT_INSIGHTS
@@ -497,7 +590,7 @@ export default function Home() {
                 Monitor status changes in real-time with sub-second precision
               </div>
             </div>
-            
+
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 border border-[#2a2d31] bg-[rgba(242,212,138,0.05)] mb-4">
                 <span className="text-[#f2d48a] text-[20px]">◈</span>
@@ -509,7 +602,7 @@ export default function Home() {
                 Clean interface designed for rapid pattern recognition
               </div>
             </div>
-            
+
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 border border-[#2a2d31] bg-[rgba(255,255,255,0.03)] mb-4">
                 <span className="text-[#d6d7da] text-[20px]">◎</span>
@@ -539,8 +632,9 @@ export default function Home() {
                 DIAGNOSTICS
               </div>
               <div className="mt-4 sm:mt-6 text-[#6f6f6f] text-[12px] sm:text-[13px] leading-relaxed">
-                Every request is instrumented with trace hooks that capture timing at each network layer. Identify
-                bottlenecks in DNS, TCP, TLS and time-to-first-byte.
+                Every request is instrumented with trace hooks that capture
+                timing at each network layer. Identify bottlenecks in DNS, TCP,
+                TLS and time-to-first-byte.
               </div>
             </div>
 
@@ -554,10 +648,34 @@ export default function Home() {
 
               <div className="mt-5 sm:mt-7 space-y-4 sm:space-y-5">
                 {[
-                  { k: "DNS_LOOKUP", v: "12ms", left: "0%", w: "15%", c: "#b9c7ff" },
-                  { k: "TCP_CONNECT", v: "24ms", left: "15%", w: "25%", c: "#b9c7ff" },
-                  { k: "TLS_HANDSHAKE", v: "58ms", left: "40%", w: "35%", c: "#f2d48a" },
-                  { k: "TTFB", v: "142ms", left: "75%", w: "25%", c: "#b9c7ff" },
+                  {
+                    k: "DNS_LOOKUP",
+                    v: "12ms",
+                    left: "0%",
+                    w: "15%",
+                    c: "#b9c7ff",
+                  },
+                  {
+                    k: "TCP_CONNECT",
+                    v: "24ms",
+                    left: "15%",
+                    w: "25%",
+                    c: "#b9c7ff",
+                  },
+                  {
+                    k: "TLS_HANDSHAKE",
+                    v: "58ms",
+                    left: "40%",
+                    w: "35%",
+                    c: "#f2d48a",
+                  },
+                  {
+                    k: "TTFB",
+                    v: "142ms",
+                    left: "75%",
+                    w: "25%",
+                    c: "#b9c7ff",
+                  },
                 ].map((row) => (
                   <div key={row.k}>
                     <div className="flex items-center justify-between text-[9px] sm:text-[10px] tracking-[0.26em] uppercase">
@@ -567,7 +685,12 @@ export default function Home() {
                     <div className="mt-2 h-[8px] sm:h-[10px] border border-[#15171a] bg-[rgba(0,0,0,0.22)] relative">
                       <div
                         className="absolute top-0 h-full"
-                        style={{ left: row.left, width: row.w, backgroundColor: row.c, opacity: 0.95 }}
+                        style={{
+                          left: row.left,
+                          width: row.w,
+                          backgroundColor: row.c,
+                          opacity: 0.95,
+                        }}
                       />
                     </div>
                   </div>
@@ -575,7 +698,8 @@ export default function Home() {
               </div>
 
               <div className="mt-5 sm:mt-7 pt-4 sm:pt-6 border-t border-[#15171a] text-[#5f636a] text-[9px] sm:text-[10px] tracking-[0.28em] uppercase">
-                TOTAL_LATENCY: <span className="text-[#d6d7da] tracking-[0.20em]">236ms</span>
+                TOTAL_LATENCY:{" "}
+                <span className="text-[#d6d7da] tracking-[0.20em]">236ms</span>
               </div>
             </Panel>
           </div>
@@ -585,21 +709,26 @@ export default function Home() {
       {/* CTA */}
       <section className="py-16 sm:py-20 lg:py-24">
         <div className="max-w-[980px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="text-[#5f636a] text-[9px] sm:text-[10px] tracking-[0.28em] uppercase">READY_TO_START</div>
+          <div className="text-[#5f636a] text-[9px] sm:text-[10px] tracking-[0.28em] uppercase">
+            READY_TO_START
+          </div>
           <div className="mt-4 text-[#d6d7da] text-[32px] sm:text-[38px] lg:text-[44px] font-black uppercase tracking-tight leading-[0.92]">
             DEPLOY YOUR FIRST
             <br />
             MONITOR IN 60 SECONDS
           </div>
           <div className="mt-4 sm:mt-6 text-[#6f6f6f] text-[12px] sm:text-[13px] leading-relaxed px-4">
-            No credit card required. Start monitoring with anomaly detection, SSL tracking and domain expiry alerts.
+            No credit card required. Start monitoring with anomaly detection,
+            SSL tracking and domain expiry alerts.
           </div>
 
           <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link href="/login">
               <PrimaryButton>START_FREE_TRIAL</PrimaryButton>
             </Link>
-            <GhostButton onClick={() => router.push("/docs")}>VIEW_DOCUMENTATION</GhostButton>
+            <GhostButton onClick={() => router.push("/docs")}>
+              VIEW_DOCUMENTATION
+            </GhostButton>
           </div>
         </div>
       </section>

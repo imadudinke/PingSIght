@@ -1,0 +1,93 @@
+# Render Blueprint for PingSight
+# This file defines the infrastructure for deploying PingSight to Render
+# See: https://render.com/docs/blueprint-spec
+
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: pingsight-db
+    env: docker
+    plan: free  # Change to 'starter' or higher for production
+    region: oregon  # Change to your preferred region
+    databases:
+      - name: pingsight
+        user: pingsight_user
+
+  # Backend API Service
+  - type: web
+    name: pingsight-backend
+    env: docker
+    region: oregon  # Should match database region
+    plan: free  # Change to 'starter' or higher for production
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    buildCommand: ""  # Docker builds automatically
+    startCommand: sh -c "alembic upgrade head && uvicorn app.main:app --host=0.0.0.0 --port=8000"
+    healthCheckPath: /health
+    envVars:
+      # Database - automatically linked
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pingsight-db
+          property: connectionString
+        # Note: You'll need to manually change postgresql:// to postgresql+psycopg://
+        # in the Render dashboard after deployment
+      
+      # Security - CHANGE THESE!
+      - key: SECRET_KEY
+        generateValue: true  # Render will generate a random value
+      
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 1440
+      
+      # Google OAuth - ADD YOUR VALUES
+      - key: GOOGLE_CLIENT_ID
+        sync: false  # Set manually in dashboard
+      
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false  # Set manually in dashboard
+      
+      - key: GOOGLE_REDIRECT_URI
+        value: https://pingsight-backend.onrender.com/auth/callback
+        # Update with your actual Render URL
+      
+      # URLs - UPDATE THESE
+      - key: FRONTEND_URL
+        value: https://your-frontend.vercel.app
+        # Update with your actual frontend URL
+      
+      - key: BACKEND_URL
+        fromService:
+          type: web
+          name: pingsight-backend
+          property: host
+      
+      # Environment
+      - key: ENVIRONMENT
+        value: production
+      
+      - key: ENV
+        value: production
+      
+      # CORS - UPDATE WITH YOUR DOMAINS
+      - key: CORS_ORIGINS
+        value: https://your-frontend.vercel.app,https://www.your-domain.com
+      
+      # Rate Limiting
+      - key: RATE_LIMIT_HEARTBEAT
+        value: 60/minute
+      
+      - key: RATE_LIMIT_API
+        value: 200/minute
+      
+      # Admin Seed Emails - IMPORTANT!
+      - key: ADMIN_SEED_EMAILS
+        value: imadudinkeremu@gmail.com
+        # Add more emails separated by commas if needed
+
+# Notes:
+# 1. After deployment, manually update DATABASE_URL to use postgresql+psycopg:// instead of postgresql://
+# 2. Add your Google OAuth credentials in the Render dashboard
+# 3. Update FRONTEND_URL and CORS_ORIGINS with your actual domains
+# 4. Update GOOGLE_REDIRECT_URI with your actual Render URL
+# 5. The admin email (imadudinkeremu@gmail.com) will automatically become admin on first login

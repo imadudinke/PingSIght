@@ -21,6 +21,14 @@ settings = get_settings()
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
 is_production = os.getenv("ENV") == "production"
 
+# Admin seed emails - these emails will automatically become admins
+# Can be configured via ADMIN_SEED_EMAILS environment variable (comma-separated)
+ADMIN_EMAILS = set(
+    email.strip() 
+    for email in os.getenv("ADMIN_SEED_EMAILS", "imadudinkeremu@gmail.com").split(",")
+    if email.strip()
+)
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 google_sso = GoogleSSO(
@@ -76,13 +84,19 @@ async def auth_callback(request: Request, db: AsyncSession = Depends(get_db)):
         user = result.scalar_one_or_none()
 
         if user is None:
-            user = User(email=user_info.email)
+            # Check if this email should be an admin
+            is_admin = user_info.email in ADMIN_EMAILS
+            user = User(email=user_info.email, is_admin=is_admin)
             db.add(user)
             await db.flush()  # user.id available now
         else:
             # Check if user is deactivated
             if not user.is_active:
                 return RedirectResponse(url=f"{frontend_url}/blocked?reason=account_deactivated")
+            
+            # If user exists but isn't admin yet, check if they should be
+            if not user.is_admin and user_info.email in ADMIN_EMAILS:
+                user.is_admin = True
 
         # Find or create social account link
         social_result = await db.execute(
@@ -149,6 +163,7 @@ async def register_user(payload: RegisterRequest, db: AsyncSession = Depends(get
     user = User(
         email=payload.email,
         hashed_password=hash_password(payload.password),
+        is_admin=payload.email in ADMIN_EMAILS,
     )
     db.add(user)
     await db.commit()

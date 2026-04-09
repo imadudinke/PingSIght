@@ -9,7 +9,7 @@ import { DashboardHeader } from "@/components/dashboard/Header";
 import { DashboardFooter } from "@/components/dashboard/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface NotificationSettings {
   discord_webhook_url: string | null;

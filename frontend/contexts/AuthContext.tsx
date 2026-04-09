@@ -1,10 +1,17 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { client } from '@/lib/api/client.gen';
-import { logout as logoutUtil } from '@/lib/utils/auth';
-import { getCurrentUserInfoAuthMeGet } from '@/lib/api/sdk.gen';
-import { API_BASE_URL } from '@/lib/constants';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from "react";
+import { client } from "@/lib/api/client.gen";
+import { logout as logoutUtil } from "@/lib/utils/auth";
+import { getCurrentUserInfoAuthMeGet } from "@/lib/api/sdk.gen";
+import { API_BASE_URL } from "@/lib/constants";
 
 interface User {
   id: string;
@@ -34,26 +41,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     client.setConfig({
       baseUrl: API_BASE_URL,
-      credentials: 'include',
+      credentials: "include",
     });
-    
+
     // Clear browser history and redirect to home
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       // Replace current history entry so back button doesn't work
-      window.history.replaceState(null, '', '/');
+      window.history.replaceState(null, "", "/");
       // Push a new state to prevent going back
-      window.history.pushState(null, '', '/');
-      
+      window.history.pushState(null, "", "/");
+
       // Prevent back button navigation
       const preventBack = () => {
-        window.history.pushState(null, '', '/');
+        window.history.pushState(null, "", "/");
       };
-      
-      window.addEventListener('popstate', preventBack);
-      
+
+      window.addEventListener("popstate", preventBack);
+
       // Clean up after 1 second (user should be on home page by then)
       setTimeout(() => {
-        window.removeEventListener('popstate', preventBack);
+        window.removeEventListener("popstate", preventBack);
       }, 1000);
     }
   }, []);
@@ -65,30 +72,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response?.response?.ok && response.data) {
         setUser(response.data as User);
       } else if (response?.response?.status === 401) {
-        console.log('Unauthorized - redirecting to login');
+        console.log("Unauthorized - redirecting to login");
         setUser(null);
         // If we're on a dashboard page and get 401, redirect to home
-        if (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard')) {
-          window.location.href = '/';
+        if (
+          typeof window !== "undefined" &&
+          window.location.pathname.startsWith("/dashboard")
+        ) {
+          window.location.href = "/";
         }
       } else if (response?.response?.status === 403) {
         // Account deactivated or blocked
-        console.log('Account blocked or deactivated');
+        console.log("Account blocked or deactivated");
         setUser(null);
         logout();
-        if (typeof window !== 'undefined') {
-          window.location.href = '/blocked?reason=account_deactivated';
+        if (typeof window !== "undefined") {
+          window.location.href = "/blocked?reason=account_deactivated";
         }
       } else {
-        console.error('Failed to fetch user, status:', response?.response?.status);
+        console.error(
+          "Failed to fetch user, status:",
+          response?.response?.status,
+        );
         setUser(null);
       }
     } catch (error) {
-      console.error('Failed to fetch user:', error);
+      console.error("Failed to fetch user:", error);
       setUser(null);
       // If we're on a dashboard page and get an error, redirect to home
-      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard')) {
-        window.location.href = '/';
+      if (
+        typeof window !== "undefined" &&
+        window.location.pathname.startsWith("/dashboard")
+      ) {
+        window.location.href = "/";
       }
     } finally {
       setIsLoading(false);
@@ -104,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Configure client with proper base URL and credentials
     client.setConfig({
       baseUrl: API_BASE_URL,
-      credentials: 'include',
+      credentials: "include",
     });
 
     // Check if user is already logged in via cookie
@@ -113,30 +129,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string) => {
     const formData = new URLSearchParams();
-    formData.append('username', username);
-    formData.append('password', password);
+    formData.append("username", username);
+    formData.append("password", password);
 
     const response = await fetch(`${API_BASE_URL}/auth/login/password`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: formData,
-      credentials: 'include', // Receive httpOnly cookie
+      credentials: "include", // Receive httpOnly cookie
     });
 
     if (!response.ok) {
       const error = await response.json();
-      
+
       // Handle blocked/deactivated accounts
       if (response.status === 403) {
-        if (typeof window !== 'undefined') {
-          window.location.href = '/blocked?reason=account_deactivated';
+        if (typeof window !== "undefined") {
+          window.location.href = "/blocked?reason=account_deactivated";
         }
-        throw new Error('Account blocked or deactivated');
+        throw new Error("Account blocked or deactivated");
       }
-      
-      throw new Error(error.detail || 'Login failed');
+
+      throw new Error(error.detail || "Login failed");
     }
 
     // Cookie is automatically set by backend
@@ -145,38 +161,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string) => {
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ email, password }),
-      credentials: 'include',
+      credentials: "include",
     });
 
     if (!response.ok) {
       const error = await response.json();
-      
+
       // Handle blocked emails
       if (response.status === 403) {
-        throw new Error('This email address is not allowed to register');
+        throw new Error("This email address is not allowed to register");
       }
-      
-      throw new Error(error.detail || 'Registration failed');
+
+      throw new Error(error.detail || "Registration failed");
     }
 
     return response.json();
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated: !!user, 
-      isLoading, 
-      login, 
-      register, 
-      logout,
-      refreshUser
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        register,
+        logout,
+        refreshUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -185,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }
