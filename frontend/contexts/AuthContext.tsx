@@ -36,6 +36,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       baseUrl: API_BASE_URL,
       credentials: 'include',
     });
+    
+    // Clear browser history and redirect to home
+    if (typeof window !== 'undefined') {
+      // Replace current history entry so back button doesn't work
+      window.history.replaceState(null, '', '/');
+      // Push a new state to prevent going back
+      window.history.pushState(null, '', '/');
+      
+      // Prevent back button navigation
+      const preventBack = () => {
+        window.history.pushState(null, '', '/');
+      };
+      
+      window.addEventListener('popstate', preventBack);
+      
+      // Clean up after 1 second (user should be on home page by then)
+      setTimeout(() => {
+        window.removeEventListener('popstate', preventBack);
+      }, 1000);
+    }
   }, []);
 
   const fetchCurrentUser = useCallback(async () => {
@@ -51,6 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard')) {
           window.location.href = '/';
         }
+      } else if (response?.response?.status === 403) {
+        // Account deactivated or blocked
+        console.log('Account blocked or deactivated');
+        setUser(null);
+        logout();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/blocked?reason=account_deactivated';
+        }
       } else {
         console.error('Failed to fetch user, status:', response?.response?.status);
         setUser(null);
@@ -65,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [logout]);
 
   const refreshUser = useCallback(async () => {
     setIsLoading(true);
@@ -99,6 +127,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!response.ok) {
       const error = await response.json();
+      
+      // Handle blocked/deactivated accounts
+      if (response.status === 403) {
+        if (typeof window !== 'undefined') {
+          window.location.href = '/blocked?reason=account_deactivated';
+        }
+        throw new Error('Account blocked or deactivated');
+      }
+      
       throw new Error(error.detail || 'Login failed');
     }
 
@@ -118,6 +155,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!response.ok) {
       const error = await response.json();
+      
+      // Handle blocked emails
+      if (response.status === 403) {
+        throw new Error('This email address is not allowed to register');
+      }
+      
       throw new Error(error.detail || 'Registration failed');
     }
 

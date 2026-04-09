@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Panel } from "@/components/dashboard/Panel";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { API_BASE_URL } from "@/lib/constants";
 
 interface BlockedEmail {
   id: string;
@@ -29,40 +30,29 @@ export function BlockedEmails() {
 
   const fetchBlockedEmails = async () => {
     try {
-      // TODO: Replace with actual blocked emails API call
-      // For now, using mock data
-      setTimeout(() => {
-        const mockBlockedEmails: BlockedEmail[] = [
-          {
-            id: "1",
-            email: "spam@malicious.com",
-            reason: "Suspicious activity detected",
-            blocked_by: "admin@pingsight.com",
-            blocked_at: "2024-03-15T14:30:00Z",
-            attempts_count: 15
-          },
-          {
-            id: "2",
-            email: "abuse@example.org",
-            reason: "Terms of service violation",
-            blocked_by: "admin@pingsight.com",
-            blocked_at: "2024-03-20T09:15:00Z",
-            attempts_count: 3
-          },
-          {
-            id: "3",
-            email: "bot@automated.net",
-            reason: "Automated registration attempts",
-            blocked_by: "system",
-            blocked_at: "2024-04-01T16:45:00Z",
-            attempts_count: 42
-          }
-        ];
-        setBlockedEmails(mockBlockedEmails);
-        setLoading(false);
-      }, 1000);
+      const response = await fetch(`${API_BASE_URL}/api/admin/blocked-emails`, {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBlockedEmails(data.blocked_emails || []);
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        console.error("Failed to fetch blocked emails:", errorData);
+        // Handle both string errors and validation error arrays
+        let errorMessage = 'Failed to fetch blocked emails';
+        if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else if (Array.isArray(errorData.detail)) {
+          errorMessage = errorData.detail.map((err: any) => err.msg || 'Validation error').join(', ');
+        }
+        setError(errorMessage);
+      }
     } catch (error) {
       console.error("Failed to fetch blocked emails:", error);
+      setError("Failed to fetch blocked emails");
+    } finally {
       setLoading(false);
     }
   };
@@ -94,22 +84,34 @@ export function BlockedEmails() {
     setError(null);
 
     try {
-      // TODO: Implement actual API call to block email
-      console.log("Blocking email:", newBlockEmail, "Reason:", newBlockReason);
-      
-      // Mock success
-      const newBlockedEmail: BlockedEmail = {
-        id: Date.now().toString(),
-        email: newBlockEmail.trim(),
-        reason: newBlockReason.trim(),
-        blocked_by: "current_admin@example.com", // Should be current user
-        blocked_at: new Date().toISOString(),
-        attempts_count: 0
-      };
-      
-      setBlockedEmails([...blockedEmails, newBlockedEmail]);
-      setNewBlockEmail("");
-      setNewBlockReason("");
+      const response = await fetch(`${API_BASE_URL}/api/admin/blocked-emails`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          email: newBlockEmail.trim(),
+          reason: newBlockReason.trim()
+        }),
+      });
+
+      if (response.ok) {
+        setNewBlockEmail("");
+        setNewBlockReason("");
+        await fetchBlockedEmails(); // Refresh the list
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        console.error("Failed to block email:", errorData);
+        // Handle both string errors and validation error arrays
+        let errorMessage = 'Failed to block email';
+        if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else if (Array.isArray(errorData.detail)) {
+          errorMessage = errorData.detail.map((err: any) => err.msg || 'Validation error').join(', ');
+        }
+        setError(errorMessage);
+      }
     } catch (error) {
       setError("Failed to block email");
       console.error("Failed to block email:", error);
@@ -122,12 +124,28 @@ export function BlockedEmails() {
     if (!selectedEmail) return;
 
     try {
-      // TODO: Implement actual API call to unblock email
-      console.log("Unblocking email:", selectedEmail.email);
-      
-      setBlockedEmails(blockedEmails.filter(blocked => blocked.id !== selectedEmail.id));
+      const response = await fetch(`${API_BASE_URL}/api/admin/blocked-emails/${selectedEmail.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        await fetchBlockedEmails(); // Refresh the list
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        console.error("Failed to unblock email:", errorData);
+        // Handle both string errors and validation error arrays
+        let errorMessage = 'Failed to unblock email';
+        if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else if (Array.isArray(errorData.detail)) {
+          errorMessage = errorData.detail.map((err: any) => err.msg || 'Validation error').join(', ');
+        }
+        setError(errorMessage);
+      }
     } catch (error) {
       console.error("Failed to unblock email:", error);
+      setError("Failed to unblock email");
     } finally {
       setSelectedEmail(null);
       setActionType(null);

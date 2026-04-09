@@ -39,8 +39,15 @@ export function AdminManagement() {
         setAdmins(data.admins || []);
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        console.error("Failed to fetch admins:", errorData.detail || response.status);
-        setError(typeof errorData.detail === 'string' ? errorData.detail : 'Failed to fetch administrators');
+        console.error("Failed to fetch admins:", errorData);
+        // Handle both string errors and validation error arrays
+        let errorMessage = 'Failed to fetch administrators';
+        if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else if (Array.isArray(errorData.detail)) {
+          errorMessage = errorData.detail.map((err: any) => err.msg || 'Validation error').join(', ');
+        }
+        setError(errorMessage);
       }
     } catch (error) {
       console.error("Failed to fetch admins:", error);
@@ -82,10 +89,19 @@ export function AdminManagement() {
 
       if (response.ok) {
         setNewAdminEmail("");
+        setError(null);
         fetchAdmins(); // Refresh the list
       } else {
-        const errorData = await response.json();
-        setError(errorData.detail || "Failed to grant admin privileges");
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        console.error("Failed to add admin:", errorData);
+        // Handle both string errors and validation error arrays
+        let errorMessage = 'Failed to grant admin privileges';
+        if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else if (Array.isArray(errorData.detail)) {
+          errorMessage = errorData.detail.map((err: any) => err.msg || 'Validation error').join(', ');
+        }
+        setError(errorMessage);
       }
     } catch (error) {
       setError("Failed to grant admin privileges");
@@ -107,8 +123,16 @@ export function AdminManagement() {
       if (response.ok) {
         fetchAdmins(); // Refresh the list
       } else {
-        const errorData = await response.json();
-        console.error("Failed to revoke admin privileges:", errorData.detail);
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        console.error("Failed to revoke admin privileges:", errorData);
+        // Handle both string errors and validation error arrays
+        let errorMessage = 'Failed to revoke admin privileges';
+        if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else if (Array.isArray(errorData.detail)) {
+          errorMessage = errorData.detail.map((err: any) => err.msg || 'Validation error').join(', ');
+        }
+        setError(errorMessage);
       }
     } catch (error) {
       console.error("Failed to revoke admin privileges:", error);

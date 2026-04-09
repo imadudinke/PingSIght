@@ -25,7 +25,8 @@ export function UserManagement() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [actionType, setActionType] = useState<'activate' | 'deactivate' | 'delete' | null>(null);
+  const [actionType, setActionType] = useState<'activate' | 'deactivate' | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -39,8 +40,18 @@ export function UserManagement() {
       if (response.ok) {
         const data = await response.json();
         setUsers(data.users);
+        setError(null);
       } else {
-        console.error("Failed to fetch users:", response.status);
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        console.error("Failed to fetch users:", errorData);
+        // Handle both string errors and validation error arrays
+        let errorMessage = 'Failed to fetch users';
+        if (typeof errorData.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else if (Array.isArray(errorData.detail)) {
+          errorMessage = errorData.detail.map((err: any) => err.msg || 'Validation error').join(', ');
+        }
+        setError(errorMessage);
       }
     } catch (error) {
       console.error("Failed to fetch users:", error);
@@ -86,14 +97,13 @@ export function UserManagement() {
   const handleUserAction = async () => {
     if (!selectedUser || !actionType) return;
 
+    setError(null);
+
     try {
       let endpoint = "";
       let method = "PUT";
       
-      if (actionType === 'delete') {
-        endpoint = `${API_BASE_URL}/api/admin/users/${selectedUser.id}`;
-        method = "DELETE";
-      } else if (actionType === 'activate') {
+      if (actionType === 'activate') {
         endpoint = `${API_BASE_URL}/api/admin/users/${selectedUser.id}/activate`;
       } else if (actionType === 'deactivate') {
         endpoint = `${API_BASE_URL}/api/admin/users/${selectedUser.id}/deactivate`;
@@ -106,13 +116,46 @@ export function UserManagement() {
 
       if (response.ok) {
         // Refresh the users list
-        fetchUsers();
+        await fetchUsers();
+        setSelectedUser(null);
+        setActionType(null);
       } else {
-        console.error(`Failed to ${actionType} user:`, response.status);
+        // Try to parse error response
+        let errorMessage = `Failed to ${actionType} user`;
+        
+        try {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await response.json();
+            
+            if (typeof errorData.detail === 'string') {
+              errorMessage = errorData.detail;
+            } else if (Array.isArray(errorData.detail)) {
+              errorMessage = errorData.detail.map((err: any) => err.msg || 'Validation error').join(', ');
+            } else if (errorData.message) {
+              errorMessage = errorData.message;
+            }
+          } else {
+            // Non-JSON response
+            const text = await response.text();
+            if (text) {
+              errorMessage = text;
+            } else {
+              errorMessage = `Server error: ${response.status} ${response.statusText}`;
+            }
+          }
+        } catch (parseError) {
+          console.error('Error parsing response:', parseError);
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+        
+        setError(errorMessage);
+        setSelectedUser(null);
+        setActionType(null);
       }
     } catch (error) {
       console.error(`Failed to ${actionType} user:`, error);
-    } finally {
+      setError(error instanceof Error ? error.message : `Failed to ${actionType} user`);
       setSelectedUser(null);
       setActionType(null);
     }
@@ -195,6 +238,12 @@ export function UserManagement() {
             </select>
           </div>
         </div>
+
+        {error && (
+          <div className="mt-4 p-3 bg-[rgba(239,68,68,0.1)] border border-[#ef4444] text-[#ef4444] text-[10px] tracking-[0.18em] uppercase">
+            {error}
+          </div>
+        )}
       </div>
 
       {/* Users Table */}
@@ -286,16 +335,6 @@ export function UserManagement() {
                           ACTIVATE
                         </button>
                       )}
-                      
-                      <button
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setActionType('delete');
-                        }}
-                        className="px-2 py-1 text-[9px] tracking-[0.18em] uppercase text-[#ef4444] hover:bg-[rgba(239,68,68,0.1)] border border-[#ef4444] hover:border-[#ef4444] transition-all"
-                      >
-                        DELETE
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -355,7 +394,7 @@ export function UserManagement() {
         message={`Are you sure you want to ${actionType} user "${selectedUser?.email}"?`}
         confirmText={actionType?.toUpperCase() || 'CONFIRM'}
         cancelText="CANCEL"
-        variant={actionType === 'delete' ? 'danger' : 'info'}
+        variant={actionType === 'deactivate' ? 'danger' : 'info'}
       />
     </Panel>
   );

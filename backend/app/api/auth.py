@@ -63,6 +63,14 @@ async def auth_callback(request: Request, db: AsyncSession = Depends(get_db)):
         with google_sso:
             user_info = await google_sso.verify_and_process(request)
 
+        # Check if email is blocked
+        from app.models.blocked_email import BlockedEmail
+        blocked_result = await db.execute(
+            select(BlockedEmail).where(BlockedEmail.email == user_info.email)
+        )
+        if blocked_result.scalar_one_or_none():
+            return RedirectResponse(url=f"{frontend_url}/blocked?reason=email_blocked")
+
         # Find or create user
         result = await db.execute(select(User).where(User.email == user_info.email))
         user = result.scalar_one_or_none()
@@ -71,6 +79,10 @@ async def auth_callback(request: Request, db: AsyncSession = Depends(get_db)):
             user = User(email=user_info.email)
             db.add(user)
             await db.flush()  # user.id available now
+        else:
+            # Check if user is deactivated
+            if not user.is_active:
+                return RedirectResponse(url=f"{frontend_url}/blocked?reason=account_deactivated")
 
         # Find or create social account link
         social_result = await db.execute(
@@ -115,6 +127,17 @@ async def register_user(payload: RegisterRequest, db: AsyncSession = Depends(get
             detail="Password must be at least 8 characters long",
         )
 
+    # Check if email is blocked
+    from app.models.blocked_email import BlockedEmail
+    blocked_result = await db.execute(
+        select(BlockedEmail).where(BlockedEmail.email == payload.email)
+    )
+    if blocked_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This email address is not allowed to register",
+        )
+
     result = await db.execute(select(User).where(User.email == payload.email))
     existing_user = result.scalar_one_or_none()
     if existing_user:
@@ -144,12 +167,30 @@ async def password_login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: AsyncSession = Depends(get_db),
 ):
+    # Check if email is blocked
+    from app.models.blocked_email import BlockedEmail
+    blocked_result = await db.execute(
+        select(BlockedEmail).where(BlockedEmail.email == form_data.username)
+    )
+    if blocked_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This email address is blocked",
+        )
+
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalar_one_or_none()
     if not user or not user.hashed_password or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
+        )
+
+    # Check if user is deactivated
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been deactivated",
         )
 
     access_token, _expires_at = create_access_token(data={"sub": user.email})

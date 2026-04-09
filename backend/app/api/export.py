@@ -187,44 +187,6 @@ def _generate_json_export(monitor: Monitor, heartbeats: list[Heartbeat]) -> dict
     }
 
 
-@router.get("/monitors/{monitor_id}")
-async def export_monitor_data(
-    monitor_id: UUID,
-    format: Literal["csv", "json"] = Query("csv", description="Export format"),
-    days: int = Query(30, ge=1, le=365, description="Number of days to export"),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Export monitor data including heartbeats and statistics.
-    
-    Supports CSV and JSON formats.
-    """
-    monitor, heartbeats = await _get_monitor_with_heartbeats(
-        monitor_id, current_user.id, db, days
-    )
-    
-    if format == "csv":
-        csv_data = _generate_csv_export(monitor, heartbeats)
-        filename = f"monitor_{monitor.name}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
-        
-        return StreamingResponse(
-            io.StringIO(csv_data),
-            media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
-    
-    else:  # json
-        json_data = _generate_json_export(monitor, heartbeats)
-        filename = f"monitor_{monitor.name}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
-        
-        return StreamingResponse(
-            io.StringIO(json.dumps(json_data, indent=2)),
-            media_type="application/json",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
-
-
 @router.get("/monitors/bulk")
 async def export_all_monitors(
     format: Literal["csv", "json"] = Query("json", description="Export format"),
@@ -305,5 +267,43 @@ async def export_all_monitors(
         return StreamingResponse(
             io.StringIO(output.getvalue()),
             media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+
+@router.get("/monitors/{monitor_id}")
+async def export_monitor_data(
+    monitor_id: UUID,
+    format: Literal["csv", "json"] = Query("csv", description="Export format"),
+    days: int = Query(30, ge=1, le=365, description="Number of days to export"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export monitor data including heartbeats and statistics.
+    
+    Supports CSV and JSON formats.
+    """
+    monitor, heartbeats = await _get_monitor_with_heartbeats(
+        monitor_id, current_user.id, db, days
+    )
+    
+    if format == "csv":
+        csv_data = _generate_csv_export(monitor, heartbeats)
+        filename = f"monitor_{monitor.name}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+        
+        return StreamingResponse(
+            io.StringIO(csv_data),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    
+    else:  # json
+        json_data = _generate_json_export(monitor, heartbeats)
+        filename = f"monitor_{monitor.name}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+        
+        return StreamingResponse(
+            io.StringIO(json.dumps(json_data, indent=2)),
+            media_type="application/json",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )

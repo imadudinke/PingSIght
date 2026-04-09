@@ -35,12 +35,21 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       setLoadingProvider(null);
     };
 
+    const handlePageShow = (event: PageTransitionEvent) => {
+      // Reset loading state when page is shown from cache (back button)
+      if (event.persisted) {
+        setLoadingProvider(null);
+      }
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
+    window.addEventListener('pageshow', handlePageShow);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('pageshow', handlePageShow);
     };
   }, []);
 

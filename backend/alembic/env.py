@@ -10,7 +10,19 @@ load_dotenv()
 
 # 2. Import your Base metadata (Crucial!)
 from app.db.base import Base
-from app.models import Heartbeat, Monitor, SocialAccount, User  # noqa: F401
+from app.models import (  # noqa: F401
+    Heartbeat,
+    Monitor,
+    SocialAccount,
+    User,
+    BlockedEmail,
+    StatusPage,
+    StatusPageComponent,
+    ComponentMonitor,
+    Incident,
+    IncidentUpdate,
+    UserNotificationSettings,
+)
 
 config = context.config
 

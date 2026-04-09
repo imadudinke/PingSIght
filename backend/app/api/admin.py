@@ -12,12 +12,17 @@ from app.models.user import User
 from app.models.monitor import Monitor
 from app.models.heartbeat import Heartbeat
 from app.models.status_page import StatusPage
+from app.models.blocked_email import BlockedEmail
 from app.core.security import get_current_user
 
 from pydantic import BaseModel
 
 class GrantAdminRequest(BaseModel):
     email: str
+
+class BlockEmailRequest(BaseModel):
+    email: str
+    reason: str
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -202,36 +207,16 @@ async def deactivate_user(
     if user.is_admin:
         raise HTTPException(status_code=400, detail="Cannot deactivate admin users")
     
+    if user.id == admin_user.id:
+        raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+    
     user.is_active = False
     await db.commit()
     
     return {"message": f"User {user.email} deactivated successfully"}
-
-
-@router.delete("/users/{user_id}")
-async def delete_user(
-    user_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    admin_user: User = Depends(require_admin)
-):
-    """Delete a user account and all associated data"""
-    
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if user.is_admin:
-        raise HTTPException(status_code=400, detail="Cannot delete admin users")
-    
-    if user.id == admin_user.id:
-        raise HTTPException(status_code=400, detail="Cannot delete your own account")
-    
-    await db.delete(user)
     await db.commit()
     
-    return {"message": f"User {user.email} deleted successfully"}
+    return {"message": f"User {user.email} deactivated successfully"}
 
 
 # ============================================================================
@@ -264,15 +249,15 @@ async def list_admins(
     return {"admins": admin_data}
 
 
-@router.post("/admins/{user_id}")
-async def grant_admin_privileges(
-    user_id: UUID,
+@router.post("/admins/by-email")
+async def grant_admin_privileges_by_email(
+    request: GrantAdminRequest,
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(require_admin)
 ):
-    """Grant admin privileges to a user"""
+    """Grant admin privileges to a user by email"""
     
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(User).where(User.email == request.email))
     user = result.scalar_one_or_none()
     
     if not user:
@@ -287,15 +272,15 @@ async def grant_admin_privileges(
     return {"message": f"Admin privileges granted to {user.email}"}
 
 
-@router.post("/admins/by-email")
-async def grant_admin_privileges_by_email(
-    request: GrantAdminRequest,
+@router.post("/admins/{user_id}")
+async def grant_admin_privileges(
+    user_id: UUID,
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(require_admin)
 ):
-    """Grant admin privileges to a user by email"""
+    """Grant admin privileges to a user"""
     
-    result = await db.execute(select(User).where(User.email == request.email))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     
     if not user:
@@ -385,3 +370,98 @@ async def get_system_health(
         "system_status": "healthy" if down_monitors == 0 else "degraded",
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
+
+
+# ============================================================================
+# BLOCKED EMAILS MANAGEMENT
+# ============================================================================
+
+@router.get("/blocked-emails")
+async def list_blocked_emails(
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(require_admin)
+):
+    """List all blocked email addresses"""
+    
+    result = await db.execute(
+        select(BlockedEmail)
+        .order_by(desc(BlockedEmail.blocked_at))
+    )
+    blocked_emails = result.scalars().all()
+    
+    blocked_data = []
+    for blocked in blocked_emails:
+        blocked_data.append({
+            "id": str(blocked.id),
+            "email": blocked.email,
+            "reason": blocked.reason or "",
+            "blocked_by": blocked.blocked_by,
+            "blocked_at": blocked.blocked_at.isoformat(),
+            "attempts_count": 0  # Not tracked in current schema
+        })
+    
+    return {"blocked_emails": blocked_data}
+
+
+@router.post("/blocked-emails")
+async def block_email(
+    request: BlockEmailRequest,
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(require_admin)
+):
+    """Block an email address"""
+    
+    # Check if email is already blocked
+    result = await db.execute(
+        select(BlockedEmail).where(BlockedEmail.email == request.email)
+    )
+    existing = result.scalar_one_or_none()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Email is already blocked")
+    
+    # Create blocked email entry
+    blocked_email = BlockedEmail(
+        email=request.email,
+        reason=request.reason,
+        blocked_by=admin_user.email
+    )
+    
+    db.add(blocked_email)
+    await db.commit()
+    await db.refresh(blocked_email)
+    
+    return {
+        "message": f"Email {request.email} has been blocked",
+        "blocked_email": {
+            "id": str(blocked_email.id),
+            "email": blocked_email.email,
+            "reason": blocked_email.reason,
+            "blocked_by": blocked_email.blocked_by,
+            "blocked_at": blocked_email.blocked_at.isoformat(),
+            "attempts_count": 0
+        }
+    }
+
+
+@router.delete("/blocked-emails/{blocked_email_id}")
+async def unblock_email(
+    blocked_email_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(require_admin)
+):
+    """Unblock an email address"""
+    
+    result = await db.execute(
+        select(BlockedEmail).where(BlockedEmail.id == blocked_email_id)
+    )
+    blocked_email = result.scalar_one_or_none()
+    
+    if not blocked_email:
+        raise HTTPException(status_code=404, detail="Blocked email not found")
+    
+    email = blocked_email.email
+    await db.delete(blocked_email)
+    await db.commit()
+    
+    return {"message": f"Email {email} has been unblocked"}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import LoginModal from "@/components/auth/LoginModal";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -81,12 +81,21 @@ function PrimaryButton({
 }
 
 function TopTab({ active, children, href }: { active?: boolean; children: React.ReactNode; href?: string }) {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const target = document.querySelector(href || '');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <a
       href={href ?? "#"}
+      onClick={handleClick}
       className={cn(
         "relative pt-[2px] pb-[10px]",
-        "text-[11px] tracking-[0.26em] uppercase font-mono",
+        "text-[11px] tracking-[0.26em] uppercase font-mono cursor-pointer",
         active ? "text-[#f2d48a]" : "text-[#6f6f6f] hover:text-[#d6d7da] transition"
       )}
     >
@@ -97,12 +106,44 @@ function TopTab({ active, children, href }: { active?: boolean; children: React.
 }
 
 export default function Home() {
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<string>("overview");
 
   const { isAuthenticated, logout, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // All hooks must be called before any conditional returns
+  const navCta = useMemo(() => {
+    if (isAuthenticated) {
+      return (
+        <button
+          onClick={logout}
+          className={cn(
+            "h-[34px] px-5",
+            "border border-[#ff6a6a] text-[#ff6a6a]",
+            "hover:bg-[#ff6a6a] hover:text-[#0b0c0e] transition",
+            "text-[11px] tracking-[0.26em] uppercase font-mono"
+          )}
+        >
+          LOGOUT
+        </button>
+      );
+    }
+    return (
+      <Link
+        href="/login"
+        className={cn(
+          "h-[34px] px-5 flex items-center",
+          "border border-[#b9c7ff] text-[#b9c7ff]",
+          "hover:bg-[#b9c7ff] hover:text-[#0b0c0e] transition",
+          "text-[11px] tracking-[0.26em] uppercase font-mono"
+        )}
+      >
+        LOGIN
+      </Link>
+    );
+  }, [isAuthenticated, logout]);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) router.push("/dashboard");
@@ -123,36 +164,29 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [searchParams]);
 
-  const navCta = useMemo(() => {
-    if (isAuthenticated) {
-      return (
-        <button
-          onClick={logout}
-          className={cn(
-            "h-[34px] px-5",
-            "border border-[#ff6a6a] text-[#ff6a6a]",
-            "hover:bg-[#ff6a6a] hover:text-[#0b0c0e] transition",
-            "text-[11px] tracking-[0.26em] uppercase font-mono"
-          )}
-        >
-          LOGOUT
-        </button>
-      );
-    }
-    return (
-      <button
-        onClick={() => setIsLoginOpen(true)}
-        className={cn(
-          "h-[34px] px-5",
-          "border border-[#b9c7ff] text-[#b9c7ff]",
-          "hover:bg-[#b9c7ff] hover:text-[#0b0c0e] transition",
-          "text-[11px] tracking-[0.26em] uppercase font-mono"
-        )}
-      >
-        LOGIN
-      </button>
-    );
-  }, [isAuthenticated, logout]);
+  // Scroll spy effect to update active section
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = ['overview', 'capabilities', 'diagnostics'];
+      const scrollPosition = window.scrollY + 100; // Offset for header
+
+      for (const sectionId of sections) {
+        const section = document.getElementById(sectionId);
+        if (section) {
+          const { offsetTop, offsetHeight } = section;
+          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
+            setActiveSection(sectionId);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Call once on mount
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0b0c0e] text-[#b0b3b8] font-mono selection:bg-[#b9c7ff] selection:text-black">
@@ -213,10 +247,9 @@ export default function Home() {
           </div>
 
           <nav className="hidden lg:flex items-center gap-7">
-            <TopTab active href="#overview">OBSERVATORY</TopTab>
-            <TopTab href="#capabilities">CAPABILITIES</TopTab>
-            <TopTab href="#diagnostics">DIAGNOSTICS</TopTab>
-            <TopTab href="#spec">SYSTEM</TopTab>
+            <TopTab active={activeSection === "overview"} href="#overview">OBSERVATORY</TopTab>
+            <TopTab active={activeSection === "capabilities"} href="#capabilities">CAPABILITIES</TopTab>
+            <TopTab active={activeSection === "diagnostics"} href="#diagnostics">DIAGNOSTICS</TopTab>
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -252,18 +285,12 @@ export default function Home() {
               </div>
 
               <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row flex-wrap gap-3">
-                <PrimaryButton onClick={() => setIsLoginOpen(true)}>
-                  INITIATE_OBSERVER
-                </PrimaryButton>
+                <Link href="/login">
+                  <PrimaryButton>
+                    INITIATE_OBSERVER
+                  </PrimaryButton>
+                </Link>
                 <GhostButton onClick={() => router.push("/docs")}>READ_PROTOCOL</GhostButton>
-                {process.env.NODE_ENV === 'development' && (
-                  <button
-                    onClick={() => window.location.href = '/api-backend/auth/login'}
-                    className="h-[46px] px-8 border border-[#f2d48a] text-[#f2d48a] hover:bg-[#f2d48a] hover:text-[#0b0c0e] transition text-[11px] tracking-[0.26em] uppercase font-mono"
-                  >
-                    TEST_GOOGLE_LOGIN
-                  </button>
-                )}
               </div>
 
               <div className="mt-8 sm:mt-10 border-t border-[#1b1d20] pt-5 sm:pt-6 grid grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
@@ -568,7 +595,9 @@ export default function Home() {
           </div>
 
           <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <PrimaryButton onClick={() => setIsLoginOpen(true)}>START_FREE_TRIAL</PrimaryButton>
+            <Link href="/login">
+              <PrimaryButton>START_FREE_TRIAL</PrimaryButton>
+            </Link>
             <GhostButton onClick={() => router.push("/docs")}>VIEW_DOCUMENTATION</GhostButton>
           </div>
         </div>
@@ -591,8 +620,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-
-      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
     </div>
   );
 }
