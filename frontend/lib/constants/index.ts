@@ -1,12 +1,12 @@
 /**
- * Auth cookies are issued by the backend origin (`http://localhost:8000` by default).
- * To keep cookie auth stable, default to calling the backend directly.
- * Set `NEXT_PUBLIC_API_PROXY=1` only when you explicitly want to use the Next.js rewrite proxy.
+ * API base URL. Set NEXT_PUBLIC_API_URL to your backend (e.g. https://pingsight.onrender.com).
+ *
+ * Local dev: set NEXT_PUBLIC_API_PROXY=1 to call /api/... on the Next server (rewritten to the backend).
  */
 export const API_BASE_URL =
   process.env.NODE_ENV === "development" &&
   process.env.NEXT_PUBLIC_API_PROXY === "1"
-    ? "/api-backend"
+    ? "/api"
     : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export const MONITOR_TYPES = {

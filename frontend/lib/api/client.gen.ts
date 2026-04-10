@@ -13,10 +13,10 @@ import type { ClientOptions as ClientOptions2 } from './types.gen';
  */
 export type CreateClientConfig<T extends ClientOptions = ClientOptions2> = (override?: Config<ClientOptions & T>) => Config<Required<ClientOptions> & T>;
 
-// Keep SSR and browser traffic aligned so auth cookies are sent to the same origin.
+// Align with @/lib/constants (dev proxy uses /api → backend).
 const getApiBaseUrl = () => {
   if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_API_PROXY === '1') {
-    return '/api-backend';
+    return '/api';
   }
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 };
