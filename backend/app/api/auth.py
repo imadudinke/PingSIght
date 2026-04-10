@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Annotated
 
@@ -16,15 +17,15 @@ from app.models.social_account import SocialAccount
 from app.core.security import create_access_token, get_current_user, verify_password, hash_password
 from app.core.config import get_settings
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
-frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-is_production = os.getenv("ENVIRONMENT", "").lower() == "production"
+frontend_url = settings.frontend_url
 
 # Admin seed emails - these emails will automatically become admins
 # Can be configured via ADMIN_SEED_EMAILS environment variable (comma-separated)
 ADMIN_EMAILS = set(
-    email.strip() 
+    email.strip()
     for email in os.getenv("ADMIN_SEED_EMAILS", "imadudinkeremu@gmail.com").split(",")
     if email.strip()
 )
@@ -34,8 +35,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 google_sso = GoogleSSO(
     client_id=settings.google_client_id,
     client_secret=settings.google_client_secret,
-    redirect_uri=os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/callback"),
-    allow_insecure_http=not is_production,
+    redirect_uri=settings.oauth_google_redirect_uri,
+    allow_insecure_http=not settings.is_production,
 )
 
 
@@ -45,12 +46,13 @@ class RegisterRequest(BaseModel):
 
 
 def set_auth_cookie(response: Response, token: str) -> None:
+    """Cross-site session: production requires Secure=True and SameSite=None."""
     response.set_cookie(
         key="access_token",
         value=token,
         httponly=True,
-        secure=is_production,
-        samesite="none" if is_production else "lax",  # "none" required for cross-domain in production
+        secure=settings.is_production,
+        samesite="none" if settings.is_production else "lax",
         max_age=3600 * 24,
         path="/",
     )
@@ -93,7 +95,7 @@ async def auth_callback(request: Request, db: AsyncSession = Depends(get_db)):
             # Check if user is deactivated
             if not user.is_active:
                 return RedirectResponse(url=f"{frontend_url}/blocked?reason=account_deactivated")
-            
+
             # If user exists but isn't admin yet, check if they should be
             if not user.is_admin and user_info.email in ADMIN_EMAILS:
                 user.is_admin = True
@@ -124,6 +126,12 @@ async def auth_callback(request: Request, db: AsyncSession = Depends(get_db)):
 
         response = RedirectResponse(url=f"{frontend_url}/auth/callback")
         set_auth_cookie(response, access_token)
+        logger.info(
+            "OAuth callback: issuing Set-Cookie access_token (secure=%s samesite=%s path=%s)",
+            settings.is_production,
+            "none" if settings.is_production else "lax",
+            "/",
+        )
         return response
 
     except SQLAlchemyError:
@@ -224,7 +232,13 @@ async def password_login(
 @router.post("/logout")
 async def logout():
     response = JSONResponse({"ok": True})
-    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        secure=settings.is_production,
+        httponly=True,
+        samesite="none" if settings.is_production else "lax",
+    )
     return response
 
 

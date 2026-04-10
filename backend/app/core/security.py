@@ -1,5 +1,6 @@
+import logging
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Optional
 
 import jwt
 from fastapi import Depends, HTTPException, status, Cookie, Request
@@ -13,6 +14,7 @@ from app.db.session import get_db
 from app.models.user import User
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -47,41 +49,55 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     token = None
-    
+    has_bearer = bool(authorization and authorization.startswith("Bearer "))
+
     # Try to get token from Authorization header first
     if authorization and authorization.startswith("Bearer "):
         token = authorization.replace("Bearer ", "")
     # Fall back to cookie
     elif access_token:
         token = access_token
-    
+
     if not token:
+        logger.debug(
+            "get_current_user: missing credentials (access_cookie_present=%s bearer_present=%s)",
+            access_token is not None,
+            has_bearer,
+        )
         raise credentials_exception
-    
+
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
         email: str = payload.get("sub")
         if email is None:
+            logger.debug("get_current_user: JWT missing sub claim")
             raise credentials_exception
     except jwt.PyJWTError:
+        logger.debug("get_current_user: JWT decode failed")
         raise credentials_exception
-    
+
+    logger.debug(
+        "get_current_user: credentials ok (bearer=%s cookie=%s)",
+        has_bearer,
+        access_token is not None,
+    )
+
     # Get user from database
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
-    
+
     if user is None:
         raise credentials_exception
-    
+
     # Check if user is deactivated
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Your account has been deactivated",
         )
-    
+
     return user
 
 
@@ -102,7 +118,7 @@ def get_current_user_email(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         )
-    
+
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
         email: str = payload.get("sub")

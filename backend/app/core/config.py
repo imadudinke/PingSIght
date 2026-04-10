@@ -1,15 +1,15 @@
-import os
+from functools import lru_cache
 from typing import List
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.env_bootstrap import is_production_env
 
-def _env_is_production() -> bool:
-    """
-    Decide whether we're running in production based on environment variables.
-    Render should set: ENVIRONMENT=production
-    """
-    return (os.getenv("ENVIRONMENT", "") or "").strip().lower() == "production"
+
+def should_load_dotenv_file() -> bool:
+    """In production, never read .env from disk — only platform env (e.g. Render)."""
+    return not is_production_env()
 
 
 class Settings(BaseSettings):
@@ -27,11 +27,16 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     backend_url: str = "http://localhost:8000"
 
-    # Environment (development, staging, production)
-    environment: str = "development"
+    # development | staging | production (ENVIRONMENT or ENV)
+    environment: str = Field(
+        default="development",
+        validation_alias=AliasChoices("ENVIRONMENT", "ENV"),
+    )
+
+    # Optional; defaults to {backend_url}/auth/callback
+    google_redirect_uri: str | None = None
 
     # CORS allowed origins (comma-separated list)
-    # Example: "https://pingsight.vercel.app,http://localhost:3000"
     cors_origins: str = "http://localhost:3000"
 
     # Rate limiting
@@ -39,10 +44,20 @@ class Settings(BaseSettings):
     rate_limit_api: str = "200/minute"
 
     model_config = SettingsConfigDict(
-        env_file=None if _env_is_production() else ".env",
+        env_file=".env" if should_load_dotenv_file() else None,
         extra="ignore",
         case_sensitive=False,
     )
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.strip().lower() == "production"
+
+    @property
+    def oauth_google_redirect_uri(self) -> str:
+        if self.google_redirect_uri:
+            return self.google_redirect_uri.strip()
+        return f"{self.backend_url.rstrip('/')}/auth/callback"
 
     @property
     def cors_origins_list(self) -> List[str]:
@@ -50,5 +65,6 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
 
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()

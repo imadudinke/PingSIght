@@ -3,11 +3,12 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
-from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-load_dotenv()
+from app.env_bootstrap import load_dotenv_if_not_production
+
+load_dotenv_if_not_production()
 
 from app.db.base import Base
 from app.models import (  # noqa: F401

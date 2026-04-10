@@ -1,4 +1,3 @@
-from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -7,8 +6,10 @@ from slowapi.errors import RateLimitExceeded
 import logging
 from datetime import datetime
 
-# Load environment variables first
-load_dotenv()
+from .env_bootstrap import load_dotenv_if_not_production
+
+# Local/dev: load .env into os.environ before Settings() / DB. Production: never load .env.
+load_dotenv_if_not_production()
 
 from .api.auth import router as auth_router
 from .api.monitors import router as monitors_router
@@ -57,18 +58,10 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Add CORS middleware with environment-aware configuration
-# Parse allowed origins from environment variable (comma-separated list)
-# In production: Only allow specific origins from CORS_ORIGINS
-# In development: Use specific origins from CORS_ORIGINS (wildcard doesn't work with credentials)
-if settings.environment == "production":
-    # Production: Use specific origins from environment variable
-    allowed_origins = settings.cors_origins_list
-    logger.info(f"CORS configured for production with origins: {allowed_origins}")
-else:
-    # Development: Use specific origins (wildcard "*" doesn't work with credentials=True)
-    allowed_origins = settings.cors_origins_list
-    logger.info(f"CORS configured for development with origins: {allowed_origins}")
+# allow_credentials=True requires explicit origins (never "*")
+allowed_origins = settings.cors_origins_list
+if not allowed_origins:
+    logger.warning("CORS_ORIGINS is empty; cross-origin requests may be blocked")
 
 app.add_middleware(
     CORSMiddleware,
@@ -95,6 +88,12 @@ async def startup_event():
     """Initialize the application on startup."""
     try:
         logger.info("Starting pingSight API...")
+        logger.info(
+            "Config: environment=%s frontend_url=%s cors_origins=%s",
+            settings.environment,
+            settings.frontend_url,
+            settings.cors_origins_list,
+        )
         
         # Start the monitor scheduler
         monitor_scheduler.start()

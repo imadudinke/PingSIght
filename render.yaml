@@ -48,13 +48,12 @@ services:
         sync: false  # Set manually in dashboard
       
       - key: GOOGLE_REDIRECT_URI
-        value: https://pingsight-backend.onrender.com/auth/callback
-        # Update with your actual Render URL
+        value: https://pingsight.onrender.com/auth/callback
+        # Must match Google Cloud Console OAuth redirect URI
       
       # URLs - UPDATE THESE
       - key: FRONTEND_URL
-        value: https://your-frontend.vercel.app
-        # Update with your actual frontend URL
+        value: https://pingsight.vercel.app
       
       - key: BACKEND_URL
         fromService:
@@ -69,9 +68,9 @@ services:
       - key: ENV
         value: production
       
-      # CORS - UPDATE WITH YOUR DOMAINS
+      # CORS: exact origin(s) when allow_credentials=True (no "*")
       - key: CORS_ORIGINS
-        value: https://your-frontend.vercel.app,https://www.your-domain.com
+        value: https://pingsight.vercel.app
       
       # Rate Limiting
       - key: RATE_LIMIT_HEARTBEAT
