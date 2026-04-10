@@ -56,18 +56,12 @@ services:
         value: https://pingsight.vercel.app
       
       - key: BACKEND_URL
-        fromService:
-          type: web
-          name: pingsight-backend
-          property: host
-      
+        value: https://pingsight.onrender.com
+
       # Environment
       - key: ENVIRONMENT
         value: production
-      
-      - key: ENV
-        value: production
-      
+
       # CORS: exact origin(s) when allow_credentials=True (no "*")
       - key: CORS_ORIGINS
         value: https://pingsight.vercel.app

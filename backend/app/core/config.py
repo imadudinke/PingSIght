@@ -1,7 +1,6 @@
 from functools import lru_cache
-from typing import List
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.env_bootstrap import is_production_env
@@ -22,6 +21,7 @@ class Settings(BaseSettings):
     # Google OAuth settings
     google_client_id: str
     google_client_secret: str
+    admin_seed_emails: str = "imadudinkeremu@gmail.com"
 
     # Frontend/Backend URLs
     frontend_url: str = "http://localhost:3000"
@@ -49,20 +49,77 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
+    @field_validator("environment", mode="before")
+    @classmethod
+    def normalize_environment(cls, value: str | None) -> str:
+        return (value or "development").strip().lower()
+
+    @field_validator("frontend_url", "backend_url", "google_redirect_uri", mode="before")
+    @classmethod
+    def normalize_optional_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized.rstrip("/") or None
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def normalize_cors_origins(cls, value: str | None) -> str:
+        return (value or "").strip()
+
     @property
     def is_production(self) -> bool:
-        return self.environment.strip().lower() == "production"
+        return self.environment == "production"
 
     @property
     def oauth_google_redirect_uri(self) -> str:
         if self.google_redirect_uri:
-            return self.google_redirect_uri.strip()
-        return f"{self.backend_url.rstrip('/')}/auth/callback"
+            return self.google_redirect_uri
+        return f"{self.backend_url}/auth/callback"
 
     @property
-    def cors_origins_list(self) -> List[str]:
-        """Parse comma-separated CORS origins into a list."""
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+    def cors_origins_list(self) -> list[str]:
+        """Parse comma-separated CORS origins into a normalized list."""
+        raw_origins = self.cors_origins or self.frontend_url
+        seen: set[str] = set()
+        origins: list[str] = []
+
+        for origin in raw_origins.split(","):
+            normalized = origin.strip().rstrip("/")
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            origins.append(normalized)
+
+        return origins
+
+    @property
+    def admin_seed_emails_list(self) -> set[str]:
+        return {
+            email.strip().lower()
+            for email in self.admin_seed_emails.split(",")
+            if email.strip()
+        }
+
+    @property
+    def auth_cookie_name(self) -> str:
+        return "access_token"
+
+    @property
+    def auth_cookie_secure(self) -> bool:
+        return self.is_production
+
+    @property
+    def auth_cookie_samesite(self) -> str:
+        return "none" if self.is_production else "lax"
+
+    @property
+    def auth_cookie_httponly(self) -> bool:
+        return True
+
+    @property
+    def auth_cookie_path(self) -> str:
+        return "/"
 
 
 @lru_cache(maxsize=1)

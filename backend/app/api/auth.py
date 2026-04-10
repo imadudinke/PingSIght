@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import Annotated
 
 from fastapi import APIRouter, Request, Depends, HTTPException, Response, status
@@ -20,16 +19,6 @@ from app.core.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-frontend_url = settings.frontend_url
-
-# Admin seed emails - these emails will automatically become admins
-# Can be configured via ADMIN_SEED_EMAILS environment variable (comma-separated)
-ADMIN_EMAILS = set(
-    email.strip()
-    for email in os.getenv("ADMIN_SEED_EMAILS", "imadudinkeremu@gmail.com").split(",")
-    if email.strip()
-)
-
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 google_sso = GoogleSSO(
@@ -48,13 +37,13 @@ class RegisterRequest(BaseModel):
 def set_auth_cookie(response: Response, token: str) -> None:
     """Cross-site session: production requires Secure=True and SameSite=None."""
     response.set_cookie(
-        key="access_token",
+        key=settings.auth_cookie_name,
         value=token,
-        httponly=True,
-        secure=settings.is_production,
-        samesite="none" if settings.is_production else "lax",
+        httponly=settings.auth_cookie_httponly,
+        secure=settings.auth_cookie_secure,
+        samesite=settings.auth_cookie_samesite,
         max_age=3600 * 24,
-        path="/",
+        path=settings.auth_cookie_path,
     )
 
 
@@ -64,7 +53,7 @@ async def auth_init():
         async with google_sso:
             return await google_sso.get_login_redirect()
     except Exception:
-        return RedirectResponse(url=f"{frontend_url}/?error=oauth_unavailable")
+        return RedirectResponse(url=f"{settings.frontend_url}/?error=oauth_unavailable")
 
 
 @router.get("/callback")
@@ -79,7 +68,7 @@ async def auth_callback(request: Request, db: AsyncSession = Depends(get_db)):
             select(BlockedEmail).where(BlockedEmail.email == user_info.email)
         )
         if blocked_result.scalar_one_or_none():
-            return RedirectResponse(url=f"{frontend_url}/blocked?reason=email_blocked")
+            return RedirectResponse(url=f"{settings.frontend_url}/blocked?reason=email_blocked")
 
         # Find or create user
         result = await db.execute(select(User).where(User.email == user_info.email))
@@ -87,17 +76,17 @@ async def auth_callback(request: Request, db: AsyncSession = Depends(get_db)):
 
         if user is None:
             # Check if this email should be an admin
-            is_admin = user_info.email in ADMIN_EMAILS
+            is_admin = user_info.email.lower() in settings.admin_seed_emails_list
             user = User(email=user_info.email, is_admin=is_admin)
             db.add(user)
             await db.flush()  # user.id available now
         else:
             # Check if user is deactivated
             if not user.is_active:
-                return RedirectResponse(url=f"{frontend_url}/blocked?reason=account_deactivated")
+                return RedirectResponse(url=f"{settings.frontend_url}/blocked?reason=account_deactivated")
 
             # If user exists but isn't admin yet, check if they should be
-            if not user.is_admin and user_info.email in ADMIN_EMAILS:
+            if not user.is_admin and user_info.email.lower() in settings.admin_seed_emails_list:
                 user.is_admin = True
 
         # Find or create social account link
@@ -124,22 +113,24 @@ async def auth_callback(request: Request, db: AsyncSession = Depends(get_db)):
         # Create token for THIS user (not existing_user/new_user)
         access_token, _expires_at = create_access_token(data={"sub": user.email})
 
-        response = RedirectResponse(url=f"{frontend_url}/auth/callback")
+        response = RedirectResponse(url=f"{settings.frontend_url}/auth/callback")
         set_auth_cookie(response, access_token)
         logger.info(
-            "OAuth callback: issuing Set-Cookie access_token (secure=%s samesite=%s path=%s)",
-            settings.is_production,
-            "none" if settings.is_production else "lax",
-            "/",
+            "OAuth callback: issuing Set-Cookie %s (secure=%s samesite=%s path=%s redirect=%s)",
+            settings.auth_cookie_name,
+            settings.auth_cookie_secure,
+            settings.auth_cookie_samesite,
+            settings.auth_cookie_path,
+            f"{settings.frontend_url}/auth/callback",
         )
         return response
 
     except SQLAlchemyError:
         await db.rollback()
-        return RedirectResponse(url=f"{frontend_url}/?error=database_error")
+        return RedirectResponse(url=f"{settings.frontend_url}/?error=database_error")
     except Exception:
         logger.exception("OAuth callback failed")
-        return RedirectResponse(url=f"{frontend_url}/?error=auth_failed")
+        return RedirectResponse(url=f"{settings.frontend_url}/?error=auth_failed")
 
 
 @router.post("/register")
@@ -172,7 +163,7 @@ async def register_user(payload: RegisterRequest, db: AsyncSession = Depends(get
     user = User(
         email=payload.email,
         hashed_password=hash_password(payload.password),
-        is_admin=payload.email in ADMIN_EMAILS,
+        is_admin=payload.email.lower() in settings.admin_seed_emails_list,
     )
     db.add(user)
     await db.commit()
@@ -234,11 +225,11 @@ async def password_login(
 async def logout():
     response = JSONResponse({"ok": True})
     response.delete_cookie(
-        key="access_token",
-        path="/",
-        secure=settings.is_production,
-        httponly=True,
-        samesite="none" if settings.is_production else "lax",
+        key=settings.auth_cookie_name,
+        path=settings.auth_cookie_path,
+        secure=settings.auth_cookie_secure,
+        httponly=settings.auth_cookie_httponly,
+        samesite=settings.auth_cookie_samesite,
     )
     return response
 

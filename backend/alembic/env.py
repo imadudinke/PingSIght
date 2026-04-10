@@ -1,4 +1,3 @@
-import os
 import asyncio
 from logging.config import fileConfig
 
@@ -6,11 +5,8 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.env_bootstrap import load_dotenv_if_not_production
-
-load_dotenv_if_not_production()
-
 from app.db.base import Base
+from app.core.config import get_settings
 from app.models import (  # noqa: F401
     Heartbeat,
     Monitor,
@@ -27,7 +23,7 @@ from app.models import (  # noqa: F401
 
 config = context.config
 
-db_url = os.getenv("DATABASE_URL")
+db_url = get_settings().database_url
 if db_url:
     config.set_main_option("sqlalchemy.url", db_url)
 

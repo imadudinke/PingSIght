@@ -39,10 +39,15 @@ def create_access_token(data: dict) -> tuple[str, datetime]:
     return encoded_jwt, expire
 
 
+def should_log_auth_request(path: str) -> bool:
+    return path in {"/auth/me", "/users/me"}
+
+
 async def get_current_user(
+    request: Request,
     authorization: Optional[str] = Depends(api_key_header),
-    access_token: Optional[str] = Cookie(None),
-    db: AsyncSession = Depends(get_db)
+    access_token: Optional[str] = Cookie(None, alias=settings.auth_cookie_name),
+    db: AsyncSession = Depends(get_db),
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -52,6 +57,8 @@ async def get_current_user(
 
     token = None
     has_bearer = bool(authorization and authorization.startswith("Bearer "))
+    has_cookie_header = "cookie" in request.headers
+    path = request.url.path
 
     # Try to get token from Authorization header first
     if authorization and authorization.startswith("Bearer "):
@@ -60,29 +67,47 @@ async def get_current_user(
     elif access_token:
         token = access_token
 
-    if not token:
-        logger.debug(
-            "get_current_user: missing credentials (access_cookie_present=%s bearer_present=%s)",
+    if should_log_auth_request(path):
+        logger.info(
+            "get_current_user: path=%s cookie_header_present=%s access_cookie_present=%s bearer_present=%s token_source=%s",
+            path,
+            has_cookie_header,
             access_token is not None,
             has_bearer,
+            "bearer" if has_bearer else "cookie" if access_token else "none",
         )
+
+    if not token:
+        if not should_log_auth_request(path):
+            logger.debug(
+                "get_current_user: missing credentials (access_cookie_present=%s bearer_present=%s)",
+                access_token is not None,
+                has_bearer,
+            )
         raise credentials_exception
 
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
         email: str = payload.get("sub")
         if email is None:
-            logger.debug("get_current_user: JWT missing sub claim")
+            logger.warning("get_current_user: JWT missing sub claim for path=%s", path)
             raise credentials_exception
     except jwt.PyJWTError:
-        logger.debug("get_current_user: JWT decode failed")
+        logger.warning("get_current_user: JWT decode failed for path=%s", path)
         raise credentials_exception
 
-    logger.debug(
-        "get_current_user: credentials ok (bearer=%s cookie=%s)",
-        has_bearer,
-        access_token is not None,
-    )
+    if should_log_auth_request(path):
+        logger.info(
+            "get_current_user: token extraction succeeded for path=%s source=%s",
+            path,
+            "bearer" if has_bearer else "cookie",
+        )
+    else:
+        logger.debug(
+            "get_current_user: credentials ok (bearer=%s cookie=%s)",
+            has_bearer,
+            access_token is not None,
+        )
 
     # Get user from database
     result = await db.execute(select(User).where(User.email == email))
@@ -103,7 +128,7 @@ async def get_current_user(
 
 def get_current_user_email(
     authorization: Optional[str] = Depends(api_key_header),
-    access_token: Optional[str] = Cookie(None),
+    access_token: Optional[str] = Cookie(None, alias=settings.auth_cookie_name),
 ) -> str:
     """Lightweight version that only returns email without DB lookup"""
 

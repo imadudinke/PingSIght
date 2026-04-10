@@ -6,11 +6,6 @@ from slowapi.errors import RateLimitExceeded
 import logging
 from datetime import datetime
 
-from .env_bootstrap import load_dotenv_if_not_production
-
-# Local/dev: load .env into os.environ before Settings() / DB. Production: never load .env.
-load_dotenv_if_not_production()
-
 from .api.auth import router as auth_router
 from .api.monitors import router as monitors_router
 from .api.heartbeats import router as heartbeats_router
@@ -62,6 +57,8 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 allowed_origins = settings.cors_origins_list
 if not allowed_origins:
     logger.warning("CORS_ORIGINS is empty; cross-origin requests may be blocked")
+if "*" in allowed_origins:
+    raise ValueError("CORS_ORIGINS cannot contain '*' when allow_credentials=True")
 
 app.add_middleware(
     CORSMiddleware,
