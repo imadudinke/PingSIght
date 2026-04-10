@@ -19,7 +19,7 @@ from app.core.config import get_settings
 settings = get_settings()
 
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-is_production = os.getenv("ENV") == "production"
+is_production = os.getenv("ENVIRONMENT", "").lower() == "production"
 
 # Admin seed emails - these emails will automatically become admins
 # Can be configured via ADMIN_SEED_EMAILS environment variable (comma-separated)
@@ -50,7 +50,7 @@ def set_auth_cookie(response: Response, token: str) -> None:
         value=token,
         httponly=True,
         secure=is_production,
-        samesite="lax",
+        samesite="none" if is_production else "lax",  # "none" required for cross-domain in production
         max_age=3600 * 24,
         path="/",
     )
