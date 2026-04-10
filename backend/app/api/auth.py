@@ -61,7 +61,7 @@ def set_auth_cookie(response: Response, token: str) -> None:
 @router.get("/login")
 async def auth_init():
     try:
-        with google_sso:
+        async with google_sso:
             return await google_sso.get_login_redirect()
     except Exception:
         return RedirectResponse(url=f"{frontend_url}/?error=oauth_unavailable")
@@ -70,7 +70,7 @@ async def auth_init():
 @router.get("/callback")
 async def auth_callback(request: Request, db: AsyncSession = Depends(get_db)):
     try:
-        with google_sso:
+        async with google_sso:
             user_info = await google_sso.verify_and_process(request)
 
         # Check if email is blocked
@@ -138,6 +138,7 @@ async def auth_callback(request: Request, db: AsyncSession = Depends(get_db)):
         await db.rollback()
         return RedirectResponse(url=f"{frontend_url}/?error=database_error")
     except Exception:
+        logger.exception("OAuth callback failed")
         return RedirectResponse(url=f"{frontend_url}/?error=auth_failed")
 
 
