@@ -30,6 +30,9 @@ const nextConfig: NextConfig = {
   },
   // /api/v1/* is proxied by app/api/v1/[[...path]]/route.ts (not rewrites) so OAuth Set-Cookie
   // is forwarded with redirect: "manual". Plain rewrites can follow 302s and drop the session cookie.
+  
+  // Enable standalone output for Docker deployments
+  output: process.env.DOCKER_BUILD === "1" ? "standalone" : undefined,
 };
 
 export default nextConfig;

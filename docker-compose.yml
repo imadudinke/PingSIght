@@ -60,10 +60,15 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BFF: "1"
     container_name: pingsight-frontend
     restart: unless-stopped
     environment:
-       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      # Runtime env var for BFF proxy (connects to backend service)
+      BACKEND_INTERNAL_URL: http://backend:8000
+      # Don't set NEXT_PUBLIC_API_URL - let it use BFF
+      NODE_ENV: production
     depends_on:
       - backend
     ports:
