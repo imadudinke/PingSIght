@@ -19,6 +19,15 @@ const HOP_BY_HOP = new Set([
   "upgrade",
 ]);
 
+/**
+ * Node fetch decompresses gzip/br bodies but keeps Content-Encoding on the Response.
+ * Forwarding those headers with the decompressed stream causes ERR_CONTENT_DECODING_FAILED.
+ */
+const STRIP_FROM_UPSTREAM_RESPONSE = new Set([
+  "content-encoding",
+  "content-length",
+]);
+
 function backendBase(): string | null {
   const raw =
     process.env.BACKEND_INTERNAL_URL?.trim() || "http://127.0.0.1:8000";
@@ -31,6 +40,7 @@ function forwardRequestHeaders(request: NextRequest): Headers {
     const lower = key.toLowerCase();
     if (lower === "host") return;
     if (HOP_BY_HOP.has(lower)) return;
+    if (lower === "accept-encoding") return;
     out.append(key, value);
   });
   const host = request.headers.get("host");
@@ -38,23 +48,19 @@ function forwardRequestHeaders(request: NextRequest): Headers {
     out.set("x-forwarded-host", host);
     out.set("x-forwarded-proto", request.nextUrl.protocol.replace(":", ""));
   }
+  // Ask origin for uncompressed bytes so Node fetch + our stream match any encoding headers.
+  out.set("accept-encoding", "identity");
   return out;
 }
 
-function copyResponseHeaders(
-  from: Response,
-  to: NextResponse,
-  setCookies: string[],
-): void {
+function copyResponseHeaders(from: Response, to: Headers): void {
   from.headers.forEach((value, key) => {
     const lower = key.toLowerCase();
-    if (lower === "set-cookie") return;
     if (HOP_BY_HOP.has(lower)) return;
-    to.headers.append(key, value);
+    if (STRIP_FROM_UPSTREAM_RESPONSE.has(lower)) return;
+    if (lower === "set-cookie") return;
+    to.append(key, value);
   });
-  for (const c of setCookies) {
-    to.headers.append("set-cookie", c);
-  }
 }
 
 async function proxy(
@@ -95,12 +101,32 @@ async function proxy(
         ? [res.headers.get("set-cookie") as string]
         : [];
 
-  const out = new NextResponse(res.body, {
+  const responseHeaders = new Headers();
+  copyResponseHeaders(res, responseHeaders);
+  for (const c of setCookies) {
+    responseHeaders.append("set-cookie", c);
+  }
+
+  // Build a fresh response to prevent encoded-body/header mismatches.
+  if (
+    request.method === "HEAD" ||
+    res.status === 204 ||
+    res.status === 205 ||
+    res.status === 304
+  ) {
+    return new NextResponse(null, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: responseHeaders,
+    });
+  }
+
+  const body = await res.arrayBuffer();
+  return new NextResponse(body, {
     status: res.status,
     statusText: res.statusText,
+    headers: responseHeaders,
   });
-  copyResponseHeaders(res, out, setCookies);
-  return out;
 }
 
 export async function GET(
