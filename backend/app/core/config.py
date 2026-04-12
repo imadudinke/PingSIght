@@ -36,8 +36,14 @@ class Settings(BaseSettings):
     # Optional; defaults to {backend_url}/auth/callback
     google_redirect_uri: str | None = None
 
-    # CORS allowed origins (comma-separated list)
+    # CORS allowed origins (comma-separated list). FRONTEND_URL is merged in main.py if missing.
     cors_origins: str = "http://localhost:3000"
+
+    # SameSite for session cookie: "lax" for BFF / same-site; use "none" only for cross-origin API.
+    auth_cookie_samesite: str = Field(
+        default="lax",
+        validation_alias=AliasChoices("AUTH_COOKIE_SAMESITE"),
+    )
 
     # Rate limiting
     rate_limit_heartbeat: str = "60/minute"
@@ -66,6 +72,14 @@ class Settings(BaseSettings):
     @classmethod
     def normalize_cors_origins(cls, value: str | None) -> str:
         return (value or "").strip()
+
+    @field_validator("auth_cookie_samesite", mode="before")
+    @classmethod
+    def normalize_samesite(cls, value: str | None) -> str:
+        v = (value or "lax").strip().lower()
+        if v not in ("lax", "strict", "none"):
+            return "lax"
+        return v
 
     @property
     def is_production(self) -> bool:
@@ -108,10 +122,6 @@ class Settings(BaseSettings):
     @property
     def auth_cookie_secure(self) -> bool:
         return self.is_production
-
-    @property
-    def auth_cookie_samesite(self) -> str:
-        return "none" if self.is_production else "lax"
 
     @property
     def auth_cookie_httponly(self) -> bool:

@@ -13,6 +13,7 @@ import { ComponentList } from "@/components/status-pages/ComponentList";
 import { IncidentList } from "@/components/status-pages/IncidentList";
 import { MaintenanceList } from "@/components/status-pages/MaintenanceList";
 import { cn } from "@/lib/utils/ui";
+import { API_BASE_URL } from "@/lib/constants";
 
 type TabType = "overview" | "components" | "incidents" | "maintenances";
 
@@ -44,7 +45,7 @@ export default function StatusPageDetailPage() {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:8000/api/status-pages/${statusPageId}`,
+        `${API_BASE_URL}/api/status-pages/${statusPageId}`,
         {
           credentials: "include",
         }

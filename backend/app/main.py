@@ -56,7 +56,12 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # allow_credentials=True requires explicit origins (never "*")
-allowed_origins = settings.cors_origins_list
+allowed_origins = list(settings.cors_origins_list)
+# Ensure the configured frontend (e.g. Vercel) is always allowed when using credentialed requests
+if settings.frontend_url:
+    fu = settings.frontend_url.rstrip("/")
+    if fu and fu not in allowed_origins:
+        allowed_origins.append(fu)
 if not allowed_origins:
     logger.warning("⚠️ [CORS] CORS_ORIGINS is empty; cross-origin requests may be blocked")
 if "*" in allowed_origins:

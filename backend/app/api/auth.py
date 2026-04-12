@@ -35,7 +35,7 @@ class RegisterRequest(BaseModel):
 
 
 def set_auth_cookie(response: Response, token: str) -> None:
-    """Cross-site session: production requires Secure=True and SameSite=None."""
+    """Session cookie (httponly; SameSite from settings, typically lax for BFF same-origin)."""
     response.set_cookie(
         key=settings.auth_cookie_name,
         value=token,

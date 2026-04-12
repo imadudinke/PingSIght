@@ -1,17 +1,28 @@
 import type { NextConfig } from "next";
 
+/**
+ * BFF: map /api/v1/* → FastAPI backend (same-origin cookies on Vercel).
+ * Set NEXT_PUBLIC_BFF=1 and BACKEND_INTERNAL_URL (e.g. https://your-api.onrender.com).
+ */
 const backendInternal =
   process.env.BACKEND_INTERNAL_URL || "http://127.0.0.1:8000";
 
+if (
+  process.env.NODE_ENV === "production" &&
+  process.env.NEXT_PUBLIC_BFF === "1" &&
+  !process.env.BACKEND_INTERNAL_URL
+) {
+  throw new Error(
+    "Set BACKEND_INTERNAL_URL (Render API URL) when NEXT_PUBLIC_BFF=1.",
+  );
+}
+
 const nextConfig: NextConfig = {
   async rewrites() {
-    // Optional local dev only: proxy /api/* → FastAPI so cookies stay same-origin with NEXT_PUBLIC_API_PROXY=1
-    if (process.env.NODE_ENV !== "development") return [];
-    if (process.env.NEXT_PUBLIC_API_PROXY === "0") return [];
-    if (process.env.NEXT_PUBLIC_API_PROXY !== "1") return [];
+    if (process.env.NEXT_PUBLIC_BFF !== "1") return [];
     return [
       {
-        source: "/api/:path*",
+        source: "/api/v1/:path*",
         destination: `${backendInternal.replace(/\/$/, "")}/:path*`,
       },
     ];

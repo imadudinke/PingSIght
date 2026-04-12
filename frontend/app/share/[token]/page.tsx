@@ -11,6 +11,7 @@ import {
   calculateP95Latency,
   calculateP99Latency,
 } from "@/lib/utils/monitor";
+import { API_BASE_URL } from "@/lib/constants";
 
 function PasswordPrompt({
   onSubmit,
@@ -173,11 +174,12 @@ export default function SharedMonitorPage() {
       if (!isBackgroundRefresh) setLoading(true);
       else setIsChartRefreshing(true);
 
-      const url = new URL(`http://localhost:8000/monitors/shared/${token}`);
-      url.searchParams.set("include_heartbeats", "200"); // Fetch all available heartbeats
-      if (password) url.searchParams.set("password", password);
+      const qs = new URLSearchParams({ include_heartbeats: "200" });
+      if (password) qs.set("password", password);
 
-      const response = await fetch(url.toString());
+      const response = await fetch(
+        `${API_BASE_URL}/monitors/shared/${token}?${qs.toString()}`
+      );
 
       if (!response.ok) {
         if (response.status === 404) {

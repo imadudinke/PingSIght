@@ -6,7 +6,7 @@
 <body>
     <h1>Test Authentication</h1>
     <p>Click the button below to test Google OAuth login:</p>
-    <button onclick="window.location.href='http://localhost:8000/auth/login'">
+    <button onclick="window.location.href='/api/v1/auth/login'">
         Login with Google
     </button>
     
@@ -19,7 +19,7 @@
     <script>
         async function testApiCall() {
             try {
-                const response = await fetch('/api/auth/me', {
+                const response = await fetch('/api/v1/auth/me', {
                     credentials: 'include'
                 });
                 const data = await response.json();

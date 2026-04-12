@@ -1,12 +1,14 @@
 /**
- * API base URL. Set NEXT_PUBLIC_API_URL to your backend (e.g. https://pingsight.onrender.com).
+ * BFF (Next.js rewrites): set NEXT_PUBLIC_BFF=1 and BACKEND_INTERNAL_URL on Vercel.
+ * API calls use same-origin /api/v1/... → proxied to FastAPI.
  *
- * Local dev: set NEXT_PUBLIC_API_PROXY=1 to call /api/... on the Next server (rewritten to the backend).
+ * Without BFF: set NEXT_PUBLIC_API_URL to your API origin (e.g. https://api.onrender.com).
  */
+export const BFF_API_PREFIX = "/api/v1";
+
 export const API_BASE_URL =
-  process.env.NODE_ENV === "development" &&
-  process.env.NEXT_PUBLIC_API_PROXY === "1"
-    ? "/api"
+  process.env.NEXT_PUBLIC_BFF === "1"
+    ? BFF_API_PREFIX
     : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export const MONITOR_TYPES = {

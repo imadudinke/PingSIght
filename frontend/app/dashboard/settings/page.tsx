@@ -10,6 +10,7 @@ import { DashboardFooter } from "@/components/dashboard/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
+import { API_BASE_URL } from "@/lib/constants";
 
 interface NotificationSettings {
   discord_webhook_url: string | null;
@@ -237,7 +238,7 @@ export default function NotificationsPage() {
       setError(null);
 
       const response = await fetch(
-        "http://localhost:8000/api/notifications/settings",
+        `${API_BASE_URL}/api/notifications/settings`,
         { credentials: "include" }
       );
 
@@ -297,7 +298,7 @@ export default function NotificationsPage() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/api/notifications/test",
+        `${API_BASE_URL}/api/notifications/test`,
         {
           method: "POST",
           credentials: "include",
