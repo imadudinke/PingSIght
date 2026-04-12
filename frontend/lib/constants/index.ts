@@ -1,8 +1,8 @@
 /**
- * BFF (Next.js rewrites): set NEXT_PUBLIC_BFF=1 and BACKEND_INTERNAL_URL on Vercel.
- * API calls use same-origin /api/v1/... → proxied to FastAPI.
+ * BFF: same-origin /api/v1 → FastAPI (next.config rewrites). On Vercel, BFF defaults on
+ * unless NEXT_PUBLIC_BFF=0 (see next.config.ts env.NEXT_PUBLIC_BFF).
  *
- * Without BFF: set NEXT_PUBLIC_API_URL to your API origin (e.g. https://api.onrender.com).
+ * Direct API: NEXT_PUBLIC_BFF=0 and NEXT_PUBLIC_API_URL=https://your-api.onrender.com
  */
 export const BFF_API_PREFIX = "/api/v1";
 

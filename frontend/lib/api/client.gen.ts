@@ -13,12 +13,12 @@ import type { ClientOptions as ClientOptions2 } from './types.gen';
  */
 export type CreateClientConfig<T extends ClientOptions = ClientOptions2> = (override?: Config<ClientOptions & T>) => Config<Required<ClientOptions> & T>;
 
-// Align with @/lib/constants (BFF uses /api/v1 → backend).
+// Must match @/lib/constants (next.config sets NEXT_PUBLIC_BFF on Vercel for BFF).
 const getApiBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_BFF === '1') {
-    return '/api/v1';
+  if (process.env.NEXT_PUBLIC_BFF === "1") {
+    return "/api/v1";
   }
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 };
 
 export const client = createClient(createConfig<ClientOptions2>({ 
