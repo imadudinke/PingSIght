@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Panel } from "@/components/dashboard/Panel";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { API_BASE_URL } from "@/lib/constants";
+import { getApiBaseUrl } from "@/lib/constants";
 
 interface AdminUser {
   id: string;
@@ -30,7 +30,7 @@ export function AdminManagement() {
 
   const fetchAdmins = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/admins`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/admin/admins`, {
         credentials: "include",
       });
 
@@ -78,7 +78,7 @@ export function AdminManagement() {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/admins/by-email`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/admin/admins/by-email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -115,7 +115,7 @@ export function AdminManagement() {
     if (!selectedAdmin) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/admins/${selectedAdmin.id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/admin/admins/${selectedAdmin.id}`, {
         method: "DELETE",
         credentials: "include",
       });

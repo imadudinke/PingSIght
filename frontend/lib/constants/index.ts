@@ -1,11 +1,29 @@
 /**
- * BFF: same-origin /api/v1 → FastAPI (next.config rewrites). On Vercel, BFF defaults on
- * unless NEXT_PUBLIC_BFF=0 (see next.config.ts env.NEXT_PUBLIC_BFF).
+ * API base for browser calls. Prefer getApiBaseUrl() — it fixes Vercel even if the build
+ * still has NEXT_PUBLIC_API_URL pointing at Render.
  *
- * Direct API: NEXT_PUBLIC_BFF=0 and NEXT_PUBLIC_API_URL=https://your-api.onrender.com
+ * BFF: Next.js rewrites /api/v1/* → BACKEND_INTERNAL_URL (set on Vercel).
  */
 export const BFF_API_PREFIX = "/api/v1";
 
+/**
+ * Resolves API base at call time (browser). On *.vercel.app, uses same-origin /api/v1
+ * unless NEXT_PUBLIC_BFF=0 (direct-to-Render mode).
+ */
+export function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_BFF === "1") {
+    return BFF_API_PREFIX;
+  }
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host.endsWith(".vercel.app") && process.env.NEXT_PUBLIC_BFF !== "0") {
+      return BFF_API_PREFIX;
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+}
+
+/** Static fallback (SSR / import time). Prefer getApiBaseUrl() in client components. */
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_BFF === "1"
     ? BFF_API_PREFIX

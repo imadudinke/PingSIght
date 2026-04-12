@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Modal from '@/components/ui/Modal';
 import SocialLoginButton from './SocialLoginButton';
 import { AlertModal } from '@/components/ui/ConfirmModal';
-import { API_BASE_URL } from '@/lib/constants';
+import { getApiBaseUrl } from '@/lib/constants';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -60,7 +60,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     // Redirect to backend OAuth endpoint
     // The backend will handle the OAuth flow and redirect back to /auth/callback
     if (provider === 'google') {
-      window.location.href = `${API_BASE_URL}/auth/login`;
+      window.location.href = `${getApiBaseUrl()}/auth/login`;
     } else if (provider === 'github') {
       // GitHub OAuth not yet implemented in backend
       setLoadingProvider(null);

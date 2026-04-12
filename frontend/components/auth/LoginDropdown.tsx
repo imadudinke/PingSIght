@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { API_BASE_URL } from '@/lib/constants';
+import { getApiBaseUrl } from '@/lib/constants';
 
 interface LoginDropdownProps {
   isOpen: boolean;
@@ -84,7 +84,7 @@ export default function LoginDropdown({ isOpen, onClose, triggerRef }: LoginDrop
 
   const handleGoogleLogin = () => {
     setLoadingProvider('google');
-    window.location.href = `${API_BASE_URL}/auth/login`;
+    window.location.href = `${getApiBaseUrl()}/auth/login`;
   };
 
   if (!isOpen) return null;

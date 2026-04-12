@@ -11,7 +11,7 @@ import {
   calculateP95Latency,
   calculateP99Latency,
 } from "@/lib/utils/monitor";
-import { API_BASE_URL } from "@/lib/constants";
+import { getApiBaseUrl } from "@/lib/constants";
 
 function PasswordPrompt({
   onSubmit,
@@ -178,7 +178,7 @@ export default function SharedMonitorPage() {
       if (password) qs.set("password", password);
 
       const response = await fetch(
-        `${API_BASE_URL}/monitors/shared/${token}?${qs.toString()}`
+        `${getApiBaseUrl()}/monitors/shared/${token}?${qs.toString()}`
       );
 
       if (!response.ok) {

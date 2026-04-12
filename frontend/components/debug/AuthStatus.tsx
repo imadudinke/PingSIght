@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { API_BASE_URL } from "@/lib/constants";
+import { getApiBaseUrl } from "@/lib/constants";
 
 export function AuthStatus() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -22,7 +22,7 @@ export function AuthStatus() {
       {!isAuthenticated && !isLoading && (
         <button 
           onClick={() => {
-            window.location.href = `${API_BASE_URL}/auth/login`;
+            window.location.href = `${getApiBaseUrl()}/auth/login`;
           }}
           className="mt-2 px-2 py-1 bg-[#f2d48a] text-[#0b0c0e] text-xs"
         >

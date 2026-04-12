@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Panel } from "@/components/dashboard/Panel";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { API_BASE_URL } from "@/lib/constants";
+import { getApiBaseUrl } from "@/lib/constants";
 
 interface BlockedEmail {
   id: string;
@@ -30,7 +30,7 @@ export function BlockedEmails() {
 
   const fetchBlockedEmails = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/blocked-emails`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/admin/blocked-emails`, {
         credentials: "include",
       });
 
@@ -84,7 +84,7 @@ export function BlockedEmails() {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/blocked-emails`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/admin/blocked-emails`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -124,7 +124,7 @@ export function BlockedEmails() {
     if (!selectedEmail) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/blocked-emails/${selectedEmail.id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/admin/blocked-emails/${selectedEmail.id}`, {
         method: "DELETE",
         credentials: "include",
       });

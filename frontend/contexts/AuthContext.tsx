@@ -11,7 +11,7 @@ import {
 import { client } from "@/lib/api/client.gen";
 import { logout as logoutUtil } from "@/lib/utils/auth";
 import { getCurrentUserInfoAuthMeGet } from "@/lib/api/sdk.gen";
-import { API_BASE_URL } from "@/lib/constants";
+import { getApiBaseUrl } from "@/lib/constants";
 
 interface User {
   id: string;
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logoutUtil();
     setUser(null);
     client.setConfig({
-      baseUrl: API_BASE_URL,
+      baseUrl: getApiBaseUrl(),
       credentials: "include",
     });
 
@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Configure client with proper base URL and credentials
     client.setConfig({
-      baseUrl: API_BASE_URL,
+      baseUrl: getApiBaseUrl(),
       credentials: "include",
     });
 
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     formData.append("username", username);
     formData.append("password", password);
 
-    const response = await fetch(`${API_BASE_URL}/auth/login/password`, {
+    const response = await fetch(`${getApiBaseUrl()}/auth/login/password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (email: string, password: string) => {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    const response = await fetch(`${getApiBaseUrl()}/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

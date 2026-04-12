@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Panel } from "@/components/dashboard/Panel";
-import { API_BASE_URL } from "@/lib/constants";
+import { getApiBaseUrl } from "@/lib/constants";
 
 interface AdminStatsData {
   totalUsers: number;
@@ -30,7 +30,7 @@ export function AdminStats() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/stats`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/admin/stats`, {
         credentials: "include",
       });
 

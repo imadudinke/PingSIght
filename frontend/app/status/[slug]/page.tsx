@@ -8,7 +8,7 @@ import { Panel } from "@/components/dashboard/Panel";
 // Local import to keep this file self-contained in your snippet context.
 // In your repo, keep using: import { TemplateRenderer } from "@/components/status-pages/templates/TemplateRenderer";
 import { TemplateRenderer } from "@/components/status-pages/templates/TemplateRenderer";
-import { API_BASE_URL } from "@/lib/constants";
+import { getApiBaseUrl } from "@/lib/constants";
 
 type PublicStatus = {
   name: string;
@@ -45,7 +45,7 @@ export default function PublicStatusPage() {
         setError(null);
 
         const response = await fetch(
-          `${API_BASE_URL}/api/status-pages/public/${slug}`
+          `${getApiBaseUrl()}/api/status-pages/public/${slug}`
         );
 
         if (!response.ok) throw new Error("STATUS_PAGE_NOT_FOUND");

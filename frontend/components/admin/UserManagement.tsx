@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Panel } from "@/components/dashboard/Panel";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { API_BASE_URL } from "@/lib/constants";
+import { getApiBaseUrl } from "@/lib/constants";
 
 interface User {
   id: string;
@@ -31,7 +31,7 @@ export function UserManagement() {
   const fetchUsers = useCallback(async () => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/admin/users?sort_by=${sortBy}&sort_order=${sortOrder}&search=${encodeURIComponent(searchTerm)}`,
+        `${getApiBaseUrl()}/api/admin/users?sort_by=${sortBy}&sort_order=${sortOrder}&search=${encodeURIComponent(searchTerm)}`,
         {
           credentials: "include",
         }
@@ -104,9 +104,9 @@ export function UserManagement() {
       let method = "PUT";
       
       if (actionType === 'activate') {
-        endpoint = `${API_BASE_URL}/api/admin/users/${selectedUser.id}/activate`;
+        endpoint = `${getApiBaseUrl()}/api/admin/users/${selectedUser.id}/activate`;
       } else if (actionType === 'deactivate') {
-        endpoint = `${API_BASE_URL}/api/admin/users/${selectedUser.id}/deactivate`;
+        endpoint = `${getApiBaseUrl()}/api/admin/users/${selectedUser.id}/deactivate`;
       }
 
       const response = await fetch(endpoint, {

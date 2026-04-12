@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { API_BASE_URL } from "@/lib/constants";
+import { getApiBaseUrl } from "@/lib/constants";
 import { createPortal } from "react-dom";
 
 interface CreateStatusPageModalProps {
@@ -54,7 +54,7 @@ export function CreateStatusPageModal({ onClose, onSuccess }: CreateStatusPageMo
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/status-pages/`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/status-pages/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

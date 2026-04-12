@@ -13,8 +13,8 @@ import type { ClientOptions as ClientOptions2 } from './types.gen';
  */
 export type CreateClientConfig<T extends ClientOptions = ClientOptions2> = (override?: Config<ClientOptions & T>) => Config<Required<ClientOptions> & T>;
 
-// Must match @/lib/constants (next.config sets NEXT_PUBLIC_BFF on Vercel for BFF).
-const getApiBaseUrl = () => {
+// Default base; AuthProvider calls setConfig(getApiBaseUrl()) on mount for correct Vercel path.
+const getInitialBaseUrl = () => {
   if (process.env.NEXT_PUBLIC_BFF === "1") {
     return "/api/v1";
   }
@@ -22,7 +22,7 @@ const getApiBaseUrl = () => {
 };
 
 export const client = createClient(createConfig<ClientOptions2>({ 
-  baseUrl: getApiBaseUrl(),
+  baseUrl: getInitialBaseUrl(),
   credentials: 'include',
   headers: {
     'Content-Type': 'application/json',

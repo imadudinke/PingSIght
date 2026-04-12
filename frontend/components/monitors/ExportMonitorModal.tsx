@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils/ui";
 import { AlertModal } from "@/components/ui/ConfirmModal";
-import { API_BASE_URL } from "@/lib/constants";
+import { getApiBaseUrl } from "@/lib/constants";
 
 interface ExportMonitorModalProps {
   monitorId: string;
@@ -28,7 +28,7 @@ export function ExportMonitorModal({
     
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/export/monitors/${monitorId}?format=${format}&days=${days}`,
+        `${getApiBaseUrl()}/api/export/monitors/${monitorId}?format=${format}&days=${days}`,
         {
           credentials: 'include', // Use cookies for authentication
         }

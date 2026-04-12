@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { cn } from "@/lib/utils/ui";
 import { HeartbeatChart } from "@/components/dashboard/HeartbeatChart";
 import { getDeepTrace, calculateP95Latency, calculateP99Latency } from "@/lib/utils/monitor";
-import { API_BASE_URL } from "@/lib/constants";
+import { getApiBaseUrl } from "@/lib/constants";
 
 type PublicMonitor = {
   id: string;
@@ -193,7 +193,7 @@ export default function PublicMonitorPage() {
 
       // This would be a public API endpoint that doesn't require authentication
       const response = await fetch(
-        `${API_BASE_URL}/api/monitors/public/${monitorId}?include_heartbeats=${limit}`
+        `${getApiBaseUrl()}/api/monitors/public/${monitorId}?include_heartbeats=${limit}`
       );
 
       if (!response.ok) {

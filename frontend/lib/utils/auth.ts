@@ -3,12 +3,12 @@
 // and automatically sent with requests using credentials: 'include'
 
 import { getCurrentUserInfoAuthMeGet } from '@/lib/api/sdk.gen';
-import { API_BASE_URL } from '@/lib/constants';
+import { getApiBaseUrl } from '@/lib/constants';
 
 export function logout() {
   // Call backend to clear the cookie
   fetch(
-    `${API_BASE_URL}/auth/logout`,
+    `${getApiBaseUrl()}/auth/logout`,
     {
       method: 'POST',
       credentials: 'include'

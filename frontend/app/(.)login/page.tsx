@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { API_BASE_URL } from '@/lib/constants';
+import { getApiBaseUrl } from '@/lib/constants';
 
 export default function LoginModal() {
   const [loadingProvider, setLoadingProvider] = useState<'google' | null>(null);
@@ -51,7 +51,7 @@ export default function LoginModal() {
 
   const handleGoogleLogin = () => {
     setLoadingProvider('google');
-    window.location.href = `${API_BASE_URL}/auth/login`;
+    window.location.href = `${getApiBaseUrl()}/auth/login`;
   };
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
