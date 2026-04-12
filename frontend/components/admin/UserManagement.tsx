@@ -101,7 +101,6 @@ export function UserManagement() {
 
     try {
       let endpoint = "";
-      let method = "PUT";
       
       if (actionType === 'activate') {
         endpoint = `${getApiBaseUrl()}/api/admin/users/${selectedUser.id}/activate`;
@@ -110,7 +109,7 @@ export function UserManagement() {
       }
 
       const response = await fetch(endpoint, {
-        method,
+        method: "PUT",
         credentials: "include",
       });
 

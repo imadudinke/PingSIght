@@ -77,7 +77,19 @@ async function proxy(
 
   const pathStr = pathSegments?.length ? pathSegments.join("/") : "";
   const path = pathStr ? `/${pathStr}` : "";
-  const target = `${backend}${path}${request.nextUrl.search}`;
+  
+  // The backend has mixed routing:
+  // - /monitors/, /auth/ → no /api prefix
+  // - /admin/, /status-pages/, /notifications/, /export/ → /api prefix
+  // So we need to add /api back for those routes
+  const needsApiPrefix = pathStr.startsWith("admin/") || 
+                         pathStr.startsWith("status-pages/") || 
+                         pathStr.startsWith("notifications/") ||
+                         pathStr.startsWith("export/") ||
+                         pathStr.startsWith("heartbeats/");
+  
+  const finalPath = needsApiPrefix ? `/api${path}` : path;
+  const target = `${backend}${finalPath}${request.nextUrl.search}`;
 
   const headers = forwardRequestHeaders(request);
 
