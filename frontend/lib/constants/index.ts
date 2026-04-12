@@ -11,34 +11,38 @@ export const BFF_API_PREFIX = "/api/v1";
  * unless NEXT_PUBLIC_BFF=0 (direct-to-Render mode).
  */
 export function getApiBaseUrl(): string {
+  // Explicit opt-out: only use direct Render URL if explicitly disabled
   if (process.env.NEXT_PUBLIC_BFF === "0") {
     return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   }
-  if (process.env.NEXT_PUBLIC_BFF === "1") {
-    return BFF_API_PREFIX;
-  }
+  
+  // In browser (client-side)
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
+    
+    // Always use BFF on Vercel
     if (host.endsWith(".vercel.app")) {
       return BFF_API_PREFIX;
     }
-    // Production on a real host (e.g. custom domain): same-origin BFF unless opted out above.
-    if (
-      process.env.NODE_ENV === "production" &&
-      host !== "localhost" &&
-      host !== "127.0.0.1"
-    ) {
+    
+    // Always use BFF in production (any non-localhost domain)
+    if (host !== "localhost" && host !== "127.0.0.1") {
       return BFF_API_PREFIX;
     }
   }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  
+  // Development: use localhost backend
+  return "http://localhost:8000";
 }
 
-/** Static fallback (SSR / import time). Prefer getApiBaseUrl() in client components. */
+/** 
+ * Static fallback (SSR / import time). Prefer getApiBaseUrl() in client components.
+ * Always use BFF in production unless explicitly disabled.
+ */
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_BFF === "1"
-    ? BFF_API_PREFIX
-    : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  process.env.NEXT_PUBLIC_BFF === "0"
+    ? (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000")
+    : (process.env.NODE_ENV === "production" ? BFF_API_PREFIX : "http://localhost:8000");
 
 export const MONITOR_TYPES = {
   SIMPLE: 'simple',
