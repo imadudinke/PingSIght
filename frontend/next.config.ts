@@ -6,9 +6,6 @@ import type { NextConfig } from "next";
  * On Vercel (VERCEL=1), BFF is ON by default unless NEXT_PUBLIC_BFF=0.
  * Set BACKEND_INTERNAL_URL to your Render API root (e.g. https://pingsight.onrender.com).
  */
-const backendInternal =
-  process.env.BACKEND_INTERNAL_URL || "http://127.0.0.1:8000";
-
 const isVercel = Boolean(process.env.VERCEL);
 
 /** Prefer same-origin proxy on Vercel so the browser never calls Render directly. */
@@ -27,19 +24,12 @@ if (
 }
 
 const nextConfig: NextConfig = {
-  // Ensure the client bundle matches rewrite behavior (fixes accidental NEXT_PUBLIC_API_URL → Render).
+  // Ensure the client bundle matches BFF behavior (fixes accidental NEXT_PUBLIC_API_URL → Render).
   env: {
     NEXT_PUBLIC_BFF: bffEnabled ? "1" : "0",
   },
-  async rewrites() {
-    if (!bffEnabled) return [];
-    return [
-      {
-        source: "/api/v1/:path*",
-        destination: `${backendInternal.replace(/\/$/, "")}/:path*`,
-      },
-    ];
-  },
+  // /api/v1/* is proxied by app/api/v1/[[...path]]/route.ts (not rewrites) so OAuth Set-Cookie
+  // is forwarded with redirect: "manual". Plain rewrites can follow 302s and drop the session cookie.
 };
 
 export default nextConfig;

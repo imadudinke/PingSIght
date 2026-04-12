@@ -1,11 +1,15 @@
 """Admin API endpoints"""
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, desc
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 from uuid import UUID
+
+logger = logging.getLogger(__name__)
 
 from app.db.session import get_db
 from app.models.user import User
@@ -73,9 +77,17 @@ async def get_admin_stats(
     total_heartbeats_result = await db.execute(select(func.count(Heartbeat.id)))
     total_heartbeats = total_heartbeats_result.scalar() or 0
     
-    # Get total status pages
-    total_status_pages_result = await db.execute(select(func.count(StatusPage.id)))
-    total_status_pages = total_status_pages_result.scalar() or 0
+    # Get total status pages (fails if migrations never created this table)
+    try:
+        total_status_pages_result = await db.execute(select(func.count(StatusPage.id)))
+        total_status_pages = total_status_pages_result.scalar() or 0
+    except ProgrammingError as e:
+        await db.rollback()
+        logger.error(
+            "admin stats: status_pages unavailable — run `alembic upgrade head` on the DB: %s",
+            e,
+        )
+        total_status_pages = 0
     
     # Calculate system uptime (mock for now)
     system_uptime = "15d 7h 23m"  # TODO: Implement actual uptime tracking
