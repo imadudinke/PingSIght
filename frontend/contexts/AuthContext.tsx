@@ -5,6 +5,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useLayoutEffect,
   ReactNode,
   useCallback,
 } from "react";
@@ -116,14 +117,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchCurrentUser();
   }, [fetchCurrentUser]);
 
-  useEffect(() => {
-    // Configure client with proper base URL and credentials
+  // Run before child useEffects so SDK calls (monitors, etc.) use /api/v1 on Vercel.
+  useLayoutEffect(() => {
     client.setConfig({
       baseUrl: getApiBaseUrl(),
       credentials: "include",
     });
+  }, []);
 
-    // Check if user is already logged in via cookie
+  useEffect(() => {
     fetchCurrentUser();
   }, [fetchCurrentUser]);
 

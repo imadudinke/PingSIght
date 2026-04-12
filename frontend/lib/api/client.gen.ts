@@ -2,6 +2,7 @@
 
 import { type ClientOptions, type Config, createClient, createConfig } from './client';
 import type { ClientOptions as ClientOptions2 } from './types.gen';
+import { BFF_API_PREFIX, getApiBaseUrl } from '@/lib/constants';
 
 /**
  * The `createClientConfig()` function will be called on client initialization
@@ -11,18 +12,27 @@ import type { ClientOptions as ClientOptions2 } from './types.gen';
  * `setConfig()`. This is useful for example if you're using Next.js
  * to ensure your client always has the correct values.
  */
-export type CreateClientConfig<T extends ClientOptions = ClientOptions2> = (override?: Config<ClientOptions & T>) => Config<Required<ClientOptions> & T>;
+export type CreateClientConfig<T extends ClientOptions = ClientOptions2> = (override?: Config<ClientOptions & T>) => Config<Required<ClientOptions & T>>;
 
-// Default base; AuthProvider calls setConfig(getApiBaseUrl()) on mount for correct Vercel path.
-const getInitialBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_BFF === "1") {
-    return "/api/v1";
+/**
+ * Default API base for the generated SDK. Production must use same-origin /api/v1 (BFF)
+ * so hooks (e.g. useMonitors) never call Render before AuthProvider.setConfig.
+ */
+function resolveInitialBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_BFF === "0") {
+    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-};
+  if (process.env.NEXT_PUBLIC_BFF === "1") {
+    return BFF_API_PREFIX;
+  }
+  if (process.env.NODE_ENV === "development") {
+    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  }
+  return BFF_API_PREFIX;
+}
 
 export const client = createClient(createConfig<ClientOptions2>({ 
-  baseUrl: getInitialBaseUrl(),
+  baseUrl: typeof window !== "undefined" ? getApiBaseUrl() : resolveInitialBaseUrl(),
   credentials: 'include',
   headers: {
     'Content-Type': 'application/json',

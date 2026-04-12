@@ -193,7 +193,7 @@ export default function PublicMonitorPage() {
 
       // This would be a public API endpoint that doesn't require authentication
       const response = await fetch(
-        `${getApiBaseUrl()}/api/monitors/public/${monitorId}?include_heartbeats=${limit}`
+        `${getApiBaseUrl()}/monitors/public/${monitorId}?include_heartbeats=${limit}`
       );
 
       if (!response.ok) {

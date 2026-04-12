@@ -11,12 +11,23 @@ export const BFF_API_PREFIX = "/api/v1";
  * unless NEXT_PUBLIC_BFF=0 (direct-to-Render mode).
  */
 export function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_BFF === "0") {
+    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  }
   if (process.env.NEXT_PUBLIC_BFF === "1") {
     return BFF_API_PREFIX;
   }
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
-    if (host.endsWith(".vercel.app") && process.env.NEXT_PUBLIC_BFF !== "0") {
+    if (host.endsWith(".vercel.app")) {
+      return BFF_API_PREFIX;
+    }
+    // Production on a real host (e.g. custom domain): same-origin BFF unless opted out above.
+    if (
+      process.env.NODE_ENV === "production" &&
+      host !== "localhost" &&
+      host !== "127.0.0.1"
+    ) {
       return BFF_API_PREFIX;
     }
   }
